@@ -43,7 +43,7 @@ All of the data acquisition and precipitation calculations scripts are located i
 ```
 
 #### Configuration file
-The only item you'll absolutely have to update within `configs.py` will be the path to the Python with the `wunder` environment installed. Additional tuneable parameters are included. 
+The only item you'll absolutely have to update within `configs.py` will be the path to the Python with the `wunder` environment installed. Additional tuneable parameters are included. Note for windows users: you may need to set `\\` in the filepath for your PYTHON executable. 
 
 ## Realtime running and visualization
 With the `wunder-precip` environment activated, launch the `run_realtime.py` script. This will automatically perform data downloads and processing every 15 minutes. On the first iteration, in order to build up a database of recent observations, data for the last hour will also be requeste from WU. Data before this does not exist within the tile files. As a result, 60 and 180 minute accumulations will be blank until sufficient data is added to the local database. 
@@ -67,6 +67,7 @@ You can select and change the accumulation period you'd like to view, filter out
 
 ## To Do:
 
+- [ ] Error-handling within `download_async.py`. `return_exceptions` turned on, so need to check the returned list for bad child processes and send them to a retry/backoff block. 
 - [ ] Better optimize the `driver.py` script to reduce redundant calculations and loops. 
 - [ ] Add in more robust data QC procedures within `driver.py`. Many likely good observations are currently discarded. Is an MRMS check possible? `pygrib` or `xarray` and `CFGRIB` dependency on windows machines may be an issue, so this may not be possible for an ops. workflow. 
 - [ ] Archive function to output storm totals (maybe on a button click to export a csv file?) over a specified range? Would require data to be saved on a cron somewhere for several days...

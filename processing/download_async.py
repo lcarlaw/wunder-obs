@@ -10,9 +10,9 @@ seconds. This takes many minutes to perform synchronously on a single thread and
 prohibitive for realtime purposes. There seem to be ~60_0000 tiles across the CONUS (each
 tile is about 15 x 15 km).
 
-Logic is built in to handle issues connecting to the WU server, in which case a backoff
-function is applied to sleep and try again several times. This is defined by MAX_RETRIES
-within the config file. 
+Logic for busted URL calls is needed. Because of asynchronous nature, need to listen for 
+specific failed tasks and then send them running within a retry and backoff function 
+somehow. Needs more thought. 
 """
 
 import asyncio 
@@ -42,12 +42,14 @@ async def fetch(s, url):
         return await r.text() 
     
 async def fetch_all(s, urls):
-    delay = 2
     tasks = []
     for url in urls: 
         task = asyncio.create_task(fetch(s, url))
         tasks.append(task)
+    res = await asyncio.gather(*tasks, return_exceptions=True)
 
+    '''
+    delay = 5
     for _ in range(MAX_RETRIES):
         try:
             res = await asyncio.gather(*tasks)
@@ -84,7 +86,7 @@ async def fetch_all(s, urls):
         print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
         log.error(msg)
         raise Exception(f"Exceeded {MAX_RETRIES} with failed downloads.")
-
+    '''
     return res
 
 async def download_data(dt, user_datetime=None):
