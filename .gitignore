@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+processing/data/2023-02-22
+processing/output/2023-02-22
+processing/tests
+processing/unused
+processing/output/*.parquet
