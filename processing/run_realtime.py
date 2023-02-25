@@ -64,7 +64,6 @@ def initialize_data():
         execute(arg)
 
     run_driver()
-    print(info("Sleeping until crons begin..."))
 
 def run_crons():
     task = schedule.Scheduler()
