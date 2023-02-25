@@ -16,6 +16,7 @@ somehow. Needs more thought.
 """
 
 import asyncio 
+import async_timeout
 import aiohttp
 
 import argparse
@@ -40,54 +41,73 @@ async def fetch(s, url):
         if r.status != 200:
             r.raise_for_status()
         return await r.text() 
-    
-async def fetch_all(s, urls):
+   
+def create_tasks(s, urls):
     tasks = []
     for url in urls: 
+        #url += 'txt'
         task = asyncio.create_task(fetch(s, url))
         tasks.append(task)
-    res = await asyncio.gather(*tasks, return_exceptions=True)
+    return tasks
 
-    '''
-    delay = 5
+async def fetch_all(s, urls):
+    tasks = create_tasks(s, urls)
+    delay = 3
     for _ in range(MAX_RETRIES):
+        info_dict = {
+        'good': [],
+        'retry': []
+        }
         try:
-            res = await asyncio.gather(*tasks)
-            msg = f"[GOOD] download status."
-            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
-            log.info(msg)
-            break
+            async with async_timeout.timeout(5):
+                res = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # This one is ok. Just wait and try again 
-        except aiohttp.client_exceptions.ClientConnectorError:
+                for knt, item in enumerate(res):
+                    # Received response from server w/ bad or invalid request returned.
+                    # Sshould result in immediate failure and no downloaded data.
+                    #if type(item) == aiohttp.client_exceptions.ClientResponseError:
+                    #    info_dict['bad'].append(item.request_info.url)
+
+                    # No server response. Could be bad data, or could be that we need to 
+                    # try again. 
+                    if type(item) == aiohttp.client_exceptions.ClientConnectorError:
+                        info_dict['retry'].append(item.request_info.url)
+                    
+                    else:
+                        info_dict['good'].append(knt)
+
+                if len(info_dict['good']) == len(urls):
+                    msg = f"[SUCCESS] Good download status."
+                    log.info(msg)
+                    print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
+                    return res
+
+                elif len(info_dict['retry']) > 0:
+                    tasks = create_tasks(s, urls)
+                    raise TimeoutError
+         
+        except TimeoutError:
             msg = f"Could not connect to WU. Sleeping {delay} s and trying again."
-            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
             log.warning(msg)
+            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
             time.sleep(delay)
             delay *= 2
             continue 
-
-        # This one means there is no data available. 
-        except aiohttp.client_exceptions.ClientResponseError:
-            msg = f"No data available. Nothing to download."
-            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
-            log.error(msg)
-            res = '{}'
-            break
+        
         else:
-            msg = f"Unknown issue downloading WU data. Exiting."
-            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
+            msg = f"[FAILURE] No data available to download. Exiting."
             log.error(msg)
+            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
             res = '{}'
             break
+
     else:
-        res = '{}'
-        msg = f"Exceeded {MAX_RETRIES} with failed downloads. Exiting."
-        print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
+        msg = f"[FAILURE] Exceeded {MAX_RETRIES} with failed downloads. Exiting."
         log.error(msg)
-        raise Exception(f"Exceeded {MAX_RETRIES} with failed downloads.")
-    '''
-    return res
+        print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
+        res = '{}'
+        
+    return res 
 
 async def download_data(dt, user_datetime=None):
     """

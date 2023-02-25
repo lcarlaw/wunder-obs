@@ -67,7 +67,7 @@ You can select and change the accumulation period you'd like to view, filter out
 
 ## To Do:
 
-- [ ] Error-handling within `download_async.py`. `return_exceptions` turned on, so need to check the returned list for bad child processes and send them to a retry/backoff block. 
+- [X] Error-handling within `download_async.py`. `return_exceptions` turned on, so need to check the returned list for bad child processes and send them to a retry/backoff block. 
 - [ ] Better optimize the `driver.py` script to reduce redundant calculations and loops. 
 - [ ] Add in more robust data QC procedures within `driver.py`. Many likely good observations are currently discarded. Is an MRMS check possible? `pygrib` or `xarray` and `CFGRIB` dependency on windows machines may be an issue, so this may not be possible for an ops. workflow. 
 - [ ] Archive function to output storm totals (maybe on a button click to export a csv file?) over a specified range? Would require data to be saved on a cron somewhere for several days...

@@ -72,6 +72,7 @@ def run_crons():
     task.every().hour.at(":17").do(run)
     task.every().hour.at(":32").do(run)
     task.every().hour.at(":47").do(run)
+    print(info("Sleeping until crons begin..."))
     while True:
         task.run_pending()
         time.sleep(1)

@@ -25,11 +25,15 @@ Note that adding tiles will increase both download times and data storage requir
     - For 10_000 tiles, GET requests and file storage take about 25 seconds. 
 """
 
-#x_start, x_end = 480, 560
-#y_start, y_end = 720, 800
+x_start, x_end = 480, 560
+y_start, y_end = 720, 800
 
-x_start, x_end = 490, 550
-y_start, y_end = 730, 790
+#x_start, x_end = 490, 550
+#y_start, y_end = 730, 790
+
+# SOCAL
+#x_start, x_end = 325, 400
+#y_start, y_end = 790, 870
 
 # Weather Underground specs
 API_KEY = 'e1f10a1e78da46f5b10a1e78da96f525'
