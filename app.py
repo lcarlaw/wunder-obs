@@ -96,9 +96,9 @@ app.layout = html.Div(
 
                         html.Hr(),
                         html.H2(),
-                        dcc.Markdown(infostrings['general-info']),
-                        html.H2(),
-                        html.Hr(),
+                        #dcc.Markdown(infostrings['general-info']),
+                        #html.H2(),
+                        #html.Hr(),
                         html.P(id='text-timestamp'),
                         html.P(id='data-age-alert',
                                style={'color': 'red',
@@ -243,7 +243,7 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max):
     # Remove data below user-requested threshold for the displayed points
     color_var = accum_periods[accum_period]
     df = df.loc[(df[color_var] >= display_threshold)]
-    num_obs = f"There are: {len(df)} observations satisfying selected parameters"
+    num_obs = f"{len(df)} observations displayed"
 
     # Need to figure out a way to normalize data points. scatter_mapbox seeems to take
     # min and max of data set each iteration, so sizes change each time. For now,
@@ -263,12 +263,12 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max):
     fig = px.scatter_mapbox(df, lat='lat', lon='lon', color=color_var, size='norm',
                             color_continuous_scale=px.colors.sequential.thermal,
                             size_max=10, hover_data=labels.keys(),
-                            range_color=[0, cbar_max], 
+                            range_color=[0, cbar_max], height=1100,
                             center={'lat':41.8, 'lon':-88.5},
                             labels=labels, opacity=0.6, zoom=7,
                             )
     fig.update_layout(
-        margin=dict(l=0, r=35, t=0, b=0),
+        margin=dict(l=0, r=0, t=0, b=0),
         autosize=True,
         showlegend=False,
         mapbox_style='outdoors', # streets, dark, outdoors, light, basic
@@ -320,6 +320,6 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max):
     return fig, hist_1hour, timestring, data_age_alert, num_obs
 
 if __name__ == "__main__":
-    app.run_server()
+    app.run_server(debug=True)
 
 

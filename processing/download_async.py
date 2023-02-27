@@ -59,7 +59,7 @@ async def fetch_all(s, urls):
         'retry': []
         }
         try:
-            async with async_timeout.timeout(5):
+            async with async_timeout.timeout(10):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
 
                 for knt, item in enumerate(res):
