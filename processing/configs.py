@@ -20,9 +20,8 @@ MAX_RETRIES = 5                             # Max download retries after failure
 Weather Underground API data stored in tiles. x-values increase west-to-east while y- 
 values do so north-to-south. Each tile seems to cover about about 15x15 km area. 
 
-Note that adding tiles will increase both download times and data storage requirements:
-    - Disk space: 40 MB/1000 tiles/hour 
-    - For 10_000 tiles, GET requests and file storage take about 25 seconds. 
+Adding too many tiles into a single call will result in downloads timing out. Keep the 
+total number of tile requests under 5,000 at a time for best results. 
 """
 # WFO LOT
 x_start, x_end = 514, 530

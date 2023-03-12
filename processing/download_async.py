@@ -10,9 +10,8 @@ seconds. This takes many minutes to perform synchronously on a single thread and
 prohibitive for realtime purposes. There seem to be ~60_0000 tiles across the CONUS 
 (each tile is about 15 x 15 km).
 
-Logic for busted URL calls is needed. Because of asynchronous nature, need to listen for 
-specific failed tasks and then send them running within a retry and backoff function 
-somehow. Needs more thought. 
+For large domains exceeding about 5,000 tiles, separate calls to download_async will 
+likely provide better performance than bundling everything into a single execution. 
 """
 
 import asyncio 
@@ -61,14 +60,16 @@ async def fetch_all(session, urls):
         'retry': []
         }
         try:
-            async with async_timeout.timeout(10):
+            async with async_timeout.timeout(20):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
                 for knt, item in enumerate(res):
                     if type(item) == aiohttp.client_exceptions.ClientConnectorError:
-                        info_dict['retry'].append(str(item.request_info.url))
+                        info_dict['retry'].append(knt)
+                        res.remove(item)
                     elif type(item) == aiohttp.client_exceptions.ClientResponseError:
                         info_dict['bad'].append(knt)
                         log.warning(f"[BAD URL]: {str(item.request_info.url)}")   
+                        res.remove(item)
                     else:
                         info_dict['good'].append(knt)
                 full_res.extend(res)
@@ -89,7 +90,7 @@ async def fetch_all(session, urls):
 
                 # Need to retry a series of URLs. 
                 elif len(info_dict['retry']) > 0:
-                    retry_urls = [i for i in info_dict['retry']]
+                    retry_urls = [urls[i] for i in info_dict['retry']]
                     log.info(f"[RETRY] Retrying: {len(retry_urls)} URLs")
                     tasks = create_tasks(session, retry_urls)
                     return_flag = False
@@ -244,8 +245,22 @@ if __name__ == '__main__':
     ap.add_argument('-t', '--time-str', dest='time_string', help='Time to attempt &    \
                     fetch past data tiles (these are only available for the last hour).\
                     Format is YYYY-mm-dd/HHMM')
+    ap.add_argument('-x', '--x-range', dest='x_range', help='Starting and ending x-    \
+                    values. Format is: x-start,x-end')
+    ap.add_argument('-y', '--y-range', dest='y_range', help='Starting and ending y-    \
+                    values. Format is: y-start,y-end')
     args = ap.parse_args()
     now = datetime.utcnow()
+
+    # User has specified tile values in the x-direction. Override configs.py specifications. 
+    if args.x_range is not None:
+        x_split = args.x_range.split(',')
+        x_start, x_end = int(x_split[0]), int(x_split[1])
+
+    # User has specified tile values in the y-direction. Override configs.py specifications. 
+    if args.y_range is not None:
+        y_split = args.y_range.split(',')
+        y_start, y_end = int(y_split[0]), int(y_split[1])
 
     user_dt = None
     if args.time_string is not None:
