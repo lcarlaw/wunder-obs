@@ -2,7 +2,7 @@ import logging
 from configs import LOG_DIR
 
 def logfile(logname):
-    logging.basicConfig(filename="%s/%s" % (LOG_DIR, logname),
+    logging.basicConfig(filename=f"{LOG_DIR}/{logname}",
                         format='%(levelname)s %(asctime)s :: %(message)s',
                         datefmt="%Y-%m-%d %H:%M:%S")
     log = logging.getLogger()

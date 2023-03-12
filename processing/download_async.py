@@ -7,8 +7,8 @@ stored data on disk & the subsequent re-writing to update with the latest observ
 
 In testing, acquiring data from 10_000 tile files and writing to disk took about 25-30 
 seconds. This takes many minutes to perform synchronously on a single thread and is 
-prohibitive for realtime purposes. There seem to be ~60_0000 tiles across the CONUS (each
-tile is about 15 x 15 km).
+prohibitive for realtime purposes. There seem to be ~60_0000 tiles across the CONUS 
+(each tile is about 15 x 15 km).
 
 Logic for busted URL calls is needed. Because of asynchronous nature, need to listen for 
 specific failed tasks and then send them running within a retry and backoff function 
@@ -35,7 +35,6 @@ from utils.log import logfile
 import os
 SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download.log")
-log2 = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download_info.log")
 
 async def fetch(session, url):
     async with session.get(url) as r:
@@ -46,9 +45,6 @@ async def fetch(session, url):
 def create_tasks(session, urls):
     tasks = []
     for url in urls: 
-        # Force a bad entry
-        if 'x=480&y=720' in url:
-            url += '.badness'
         task = asyncio.create_task(fetch(session, url))
         tasks.append(task)
     return tasks
@@ -56,6 +52,8 @@ def create_tasks(session, urls):
 async def fetch_all(session, urls):
     tasks = create_tasks(session, urls)
     delay = 3
+    full_res = []
+    return_flag = False
     for _ in range(MAX_RETRIES):
         info_dict = {
         'good': [],
@@ -65,54 +63,57 @@ async def fetch_all(session, urls):
         try:
             async with async_timeout.timeout(10):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
-
                 for knt, item in enumerate(res):
-                    # No server response. Could be bad data, or could be we need to 
-                    # try again. 
                     if type(item) == aiohttp.client_exceptions.ClientConnectorError:
                         info_dict['retry'].append(str(item.request_info.url))
-
                     elif type(item) == aiohttp.client_exceptions.ClientResponseError:
-                        info_dict['bad'].append(str(item.request_info.url))
-                    
+                        info_dict['bad'].append(knt)
+                        log.warning(f"[BAD URL]: {str(item.request_info.url)}")   
                     else:
                         info_dict['good'].append(knt)
+                full_res.extend(res)
                 
-                print(info_dict)
-                     
-                if len(info_dict['bad']) == 0:
-                    msg = f"[SUCCESS] Good download status."
-                    log.info(msg)
-                    print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
-                    return res
+                # 100% of tiles returned successfully. Exit the download loop.  
+                if len(info_dict['bad']) == 0 and len(info_dict['retry']) == 0:
+                    log.info(f"[SUCCESS] Good download status.")
+                    return_flag = True    
+
+                # Some bad data. Remove from the response and exit the download loop. 
+                elif len(info_dict['bad']) > 0 and len(info_dict['retry']) == 0:
+                    log.info(f"[SUCCESS] Good download status. Some bad URLs")
+                    counter = 0
+                    for element in info_dict['bad']:
+                        res.pop(element-counter)
+                        counter += 1
+                    return_flag = True  
 
                 # Need to retry a series of URLs. 
                 elif len(info_dict['retry']) > 0:
-                    tasks = create_tasks(session, urls)
-                    raise TimeoutError
-         
+                    retry_urls = [i for i in info_dict['retry']]
+                    log.info(f"[RETRY] Retrying: {len(retry_urls)} URLs")
+                    tasks = create_tasks(session, retry_urls)
+                    return_flag = False
+                    time.sleep(1)
+                    continue
+
+                if return_flag: 
+                    log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
+                    return full_res  
+                    
         except TimeoutError:
-            msg = f"Could not connect to WU. Sleeping {delay} s and trying again."
-            log.warning(msg)
-            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
+            log.warning(f"Could not connect to WU. Sleeping {delay} seconds.")
             time.sleep(delay)
             delay *= 2
-            continue 
-        
+            continue     
         else:
-            msg = f"[FAILURE] No data available to download. Exiting."
-            log.error(msg)
-            print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
-            res = '{}'
+            log.error(f"[FAILURE] No data available to download. Exiting.")
+            log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
             break
-
     else:
-        msg = f"[FAILURE] Exceeded {MAX_RETRIES} with failed downloads. Exiting."
-        log.error(msg)
-        print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
-        res = '{}'
-        
-    return res 
+        log.error(f"[FAILURE] Exceeded {MAX_RETRIES} retries. Exiting.")
+        log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
+
+    return full_res 
 
 async def download_data(dt, user_datetime=None):
     """
@@ -165,7 +166,7 @@ async def download_data(dt, user_datetime=None):
         htmls = await fetch_all(session, urls)
     
     log.info(f"TIME TO COMPLETE DATA SCRAPING: {round(time.time()-t1, 2)} seconds")
-    
+
     """
     I/O part of the download process, which is the most CPU-intensive. Pool is much 
     faster than ThreadPool in this case as a result. Lingering improvements are likely
@@ -233,10 +234,10 @@ def parse_info_tiles(html, xval, yval, purge_dt):
 
     # Merge the data and drop any entries older than purge_dt. Save to disk.
     df = pd.concat([df, pd.DataFrame(data_dict)])
-    initial_length = len(df)
+    #initial_length = len(df)
     df = df.loc[df['dateutc'] >= purge_dt]
-    end_length = len(df)
-    delta_length = initial_length - end_length
+    #end_length = len(df)
+    #delta_length = initial_length - end_length
 
     # Observations within this tile were purged.
     #if delta_length > 0:

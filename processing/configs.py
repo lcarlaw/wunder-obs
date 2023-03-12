@@ -24,16 +24,9 @@ Note that adding tiles will increase both download times and data storage requir
     - Disk space: 40 MB/1000 tiles/hour 
     - For 10_000 tiles, GET requests and file storage take about 25 seconds. 
 """
-
-x_start, x_end = 480, 482
-y_start, y_end = 720, 722
-
-#x_start, x_end = 490, 550
-#y_start, y_end = 730, 790
-
-# SOCAL
-#x_start, x_end = 325, 400
-#y_start, y_end = 790, 870
+# WFO LOT
+x_start, x_end = 514, 530
+y_start, y_end = 754, 773
 
 # Weather Underground specs
 API_KEY = 'e1f10a1e78da46f5b10a1e78da96f525'
