@@ -234,14 +234,7 @@ def parse_info_tiles(html, xval, yval, purge_dt):
 
     # Merge the data and drop any entries older than purge_dt. Save to disk.
     df = pd.concat([df, pd.DataFrame(data_dict)])
-    #initial_length = len(df)
     df = df.loc[df['dateutc'] >= purge_dt]
-    #end_length = len(df)
-    #delta_length = initial_length - end_length
-
-    # Observations within this tile were purged.
-    #if delta_length > 0:
-    #    log.info(f"Dropped {delta_length} observations from dataframe")
 
     # Better to sort here after download, or within qc step each time?
     df.to_parquet(datafile, engine='pyarrow', index=False)
