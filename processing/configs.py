@@ -25,8 +25,8 @@ Note that adding tiles will increase both download times and data storage requir
     - For 10_000 tiles, GET requests and file storage take about 25 seconds. 
 """
 
-x_start, x_end = 480, 560
-y_start, y_end = 720, 800
+x_start, x_end = 480, 482
+y_start, y_end = 720, 722
 
 #x_start, x_end = 490, 550
 #y_start, y_end = 730, 790

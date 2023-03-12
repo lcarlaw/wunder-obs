@@ -35,27 +35,31 @@ from utils.log import logfile
 import os
 SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download.log")
+log2 = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download_info.log")
 
-async def fetch(s, url):
-    async with s.get(url) as r:
+async def fetch(session, url):
+    async with session.get(url) as r:
         if r.status != 200:
             r.raise_for_status()
         return await r.text() 
    
-def create_tasks(s, urls):
+def create_tasks(session, urls):
     tasks = []
     for url in urls: 
-        #url += 'txt'
-        task = asyncio.create_task(fetch(s, url))
+        # Force a bad entry
+        if 'x=480&y=720' in url:
+            url += '.badness'
+        task = asyncio.create_task(fetch(session, url))
         tasks.append(task)
     return tasks
 
-async def fetch_all(s, urls):
-    tasks = create_tasks(s, urls)
+async def fetch_all(session, urls):
+    tasks = create_tasks(session, urls)
     delay = 3
     for _ in range(MAX_RETRIES):
         info_dict = {
         'good': [],
+        'bad': [],
         'retry': []
         }
         try:
@@ -63,27 +67,28 @@ async def fetch_all(s, urls):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
 
                 for knt, item in enumerate(res):
-                    # Received response from server w/ bad or invalid request returned.
-                    # Sshould result in immediate failure and no downloaded data.
-                    #if type(item) == aiohttp.client_exceptions.ClientResponseError:
-                    #    info_dict['bad'].append(item.request_info.url)
-
-                    # No server response. Could be bad data, or could be that we need to 
+                    # No server response. Could be bad data, or could be we need to 
                     # try again. 
                     if type(item) == aiohttp.client_exceptions.ClientConnectorError:
-                        info_dict['retry'].append(item.request_info.url)
+                        info_dict['retry'].append(str(item.request_info.url))
+
+                    elif type(item) == aiohttp.client_exceptions.ClientResponseError:
+                        info_dict['bad'].append(str(item.request_info.url))
                     
                     else:
                         info_dict['good'].append(knt)
-
-                if len(info_dict['good']) == len(urls):
+                
+                print(info_dict)
+                     
+                if len(info_dict['bad']) == 0:
                     msg = f"[SUCCESS] Good download status."
                     log.info(msg)
                     print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {msg}")
                     return res
 
+                # Need to retry a series of URLs. 
                 elif len(info_dict['retry']) > 0:
-                    tasks = create_tasks(s, urls)
+                    tasks = create_tasks(session, urls)
                     raise TimeoutError
          
         except TimeoutError:
@@ -234,8 +239,8 @@ def parse_info_tiles(html, xval, yval, purge_dt):
     delta_length = initial_length - end_length
 
     # Observations within this tile were purged.
-    if delta_length > 0:
-        log.info(f"Dropped {delta_length} observations from dataframe")
+    #if delta_length > 0:
+    #    log.info(f"Dropped {delta_length} observations from dataframe")
 
     # Better to sort here after download, or within qc step each time?
     df.to_parquet(datafile, engine='pyarrow', index=False)
