@@ -5,10 +5,7 @@ Path to Python exeuctable. Used by run_realtime.py
 Likely need \\ separators on Windows machines instead of /
 """
 PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
-#PYTHON = 'C:\\Users\\leecarlaw\\environments\\wunder\\Scripts\\python.exe'
-
-SCRIPT_PATH = os.path.dirname(__file__) or "."
-#SCRIPT_PATH = 'Z:\\scripts\\wunder-precip\\processing'
+SCRIPT_PATH = '/Users/leecarlaw/scripts/wunder-precip/processing'
 
 # You should be able to leave these alone. Alter if desired. 
 DATA_DIR = f"{SCRIPT_PATH}/data"

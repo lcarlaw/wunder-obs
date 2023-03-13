@@ -13,7 +13,6 @@ import asyncio
 import async_timeout
 import aiohttp
 
-import re
 import argparse
 import json
 import pandas as pd
@@ -43,21 +42,13 @@ async def fetch_all(session, urls):
     
     def create_tasks(session, urls):
         tasks = []
-        xvals = []
-        yvals = []
         for url in urls: 
-            # Grab the x- and y- tile locations
-            loc_str = re.findall('x=\d{0,4}&y=\d{0,4}', url)[0]
-            idx = loc_str.find('&')
-            xvals.append(int(loc_str[2:idx]))
-            yvals.append(int(loc_str[idx+3:]))
-
             # Create async task group
             task = asyncio.create_task(fetch(session, url))
             tasks.append(task)
-        return tasks, xvals, yvals
+        return tasks
 
-    tasks, xvals, yvals = create_tasks(session, urls)
+    tasks = create_tasks(session, urls)
     delay_seconds = 3
     full_res = []
     return_flag = False
@@ -68,7 +59,7 @@ async def fetch_all(session, urls):
         'retry': []
         }
         try:
-            async with async_timeout.timeout(20):
+            async with async_timeout.timeout(5):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
 
             for knt, item in enumerate(res):
@@ -83,9 +74,8 @@ async def fetch_all(session, urls):
             indices_to_remove = info_dict['bad'] + info_dict['retry']
             for element in sorted(indices_to_remove, reverse=True):
                 del res[element]
-                del xvals[element]
-                del yvals[element]
-            
+
+            log.info(info_dict)
             full_res.extend(res)
 
             # 100% of tiles returned successfully. Exit the download loop.  
@@ -116,9 +106,10 @@ async def fetch_all(session, urls):
 
             if return_flag: 
                 log.info(f"Sending {len(full_res)} of {total_urls} tiles to parser.")
-                return full_res, xvals, yvals
+                return full_res
                     
-        except (TimeoutError, asyncio.TimeoutError):
+        except (TimeoutError, asyncio.TimeoutError, asyncio.CancelledError):
+            full_res = []
             log.warning(f"Could not connect to WU. Sleeping {delay_seconds} seconds.")
             time.sleep(delay_seconds)
             delay_seconds *= 2
@@ -131,7 +122,7 @@ async def fetch_all(session, urls):
         log.error(f"[FAILURE] Exceeded {MAX_RETRIES} retries. Exiting.")
         log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
 
-    return full_res, xvals, yvals
+    return full_res
 
 async def download_data(dt, user_datetime=None):
     """
@@ -185,7 +176,7 @@ async def download_data(dt, user_datetime=None):
     # This is where the actual data acquisition from the WU API takes place.
     t1 = time.time()
     async with aiohttp.ClientSession() as session:
-        htmls, xvals, yvals = await fetch_all(session, urls)
+        htmls = await fetch_all(session, urls)
     
     log.info(f"TIME TO COMPLETE DATA SCRAPING: {round(time.time()-t1, 2)} seconds")
 
@@ -195,7 +186,7 @@ async def download_data(dt, user_datetime=None):
     to dataframe I/O. 
     """
     with Pool(4) as pool:
-        ret = pool.starmap(parse_info_tiles, zip(htmls, xvals, yvals))
+        ret = pool.starmap(parse_info_tiles, zip(htmls))
     
     final = pd.concat(ret)
     datafile = f"{WUNDER_DIR}/merged_tiles.parquet"
@@ -205,14 +196,21 @@ async def download_data(dt, user_datetime=None):
     if Path(datafile).exists():
        temp_df = pd.read_parquet(datafile)
     final = pd.concat([final, temp_df])
+    final.drop_duplicates(subset=['siteid', 'dateutc'], inplace=True)
 
     # Prune entries older than PURGE_HOURS and write to disk.
     final = final.loc[final['dateutc'] >= purge_dt]
+    final['siteid'] = final['siteid'].astype('category')
+    final[['lon','lat','precip']] = final[['lon','lat','precip']].apply(pd.to_numeric, 
+                                                                      downcast='float')
+    final['localhour'] = pd.to_numeric(final['localhour'], downcast='unsigned')
     final.to_parquet(datafile)
 
-def parse_info_tiles(html, xval, yval):
+def parse_info_tiles(html):
     """
     Parse the json data returned from each tile's GET request and return a python dict.
+
+    - Rounding lat/lons to 2 decimal places. 
 
     Parameters:
     -----------
@@ -234,6 +232,8 @@ def parse_info_tiles(html, xval, yval):
         for val in data['features']:
             values = val['properties']
             lon, lat = val['geometry']['coordinates']
+            lon = round(lon, 2)
+            lat = round(lat, 2)
             data_dict['siteid'].append(val['id'])
             data_dict['lon'].append(lon)
             data_dict['lat'].append(lat)
@@ -241,8 +241,8 @@ def parse_info_tiles(html, xval, yval):
             data_dict['precip'].append(values['dailyrainin'])
             data_dict['localhour'].append(values['localhour'])
 
-    except (json.decoder.JSONDecodeError, KeyError):
-        log.warning(f"No JSON data available for tile {xval}_{yval}")
+    except (json.decoder.JSONDecodeError, KeyError, TypeError):
+        log.warning(f"Unable to parse tile")
     
     df = pd.DataFrame.from_dict(data_dict)
     return df
