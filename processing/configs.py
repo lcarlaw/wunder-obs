@@ -1,41 +1,45 @@
 import os
 
+"""
+Path to Python exeuctable. Used by run_realtime.py
+Likely need \\ separators on Windows machines instead of /
+"""
 PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
+SCRIPT_PATH = '/Users/leecarlaw/scripts/wunder-precip/processing'
 
 # You should be able to leave these alone. Alter if desired. 
-SCRIPT_PATH = os.path.dirname(__file__) or "."
 DATA_DIR = f"{SCRIPT_PATH}/data"
 OUTPUT_DIR = f"{SCRIPT_PATH}/output"
 ARCHIVE_DIR = f"{OUTPUT_DIR}/archive"
 LOG_DIR = f"{SCRIPT_PATH}/logs"             # Location of logfiles
 WUNDER_DIR = f"{DATA_DIR}/wunder_tiles"     # Weather Underground tiles
 
-PURGE_HOURS = 24                            # number of hours to store data locally
+MAX_RETRIES = 5                             # Max download retries after failure
+PURGE_HOURS = 120                           # number of hours to store data locally
 MAX_DIFF_MINUTES = 5                        # max differential tolerance for ob age
 MAX_AGE_MINUTES = 30                        # older observations won't be displayed
-DELTA_TOLERANCE = 20                        # Max 5-min precip rate before flagging
-MAX_RETRIES = 5                             # Max download retries after failure
 
 """
 Weather Underground API data stored in tiles. x-values increase west-to-east while y- 
 values do so north-to-south. Each tile seems to cover about about 15x15 km area. 
 
-Note that adding tiles will increase both download times and data storage requirements:
-    - Disk space: 40 MB/1000 tiles/hour 
-    - For 10_000 tiles, GET requests and file storage take about 25 seconds. 
+Adding too many tiles into a single call will result in downloads timing out and/or 
+diminishing download performance. Keep the total number of tile requests under 5,000 at
+a time for best results. 
+
+Alternatively, you can specify the x and y ranges within the download_async call 
+directly by using the -x and -y flags:
+    python download_async.py -x 500,549 -y 700,745
 """
+# WFO LOT
+#x_start, x_end = 514, 532
+#y_start, y_end = 754, 773
 
-x_start, x_end = 480, 560
-y_start, y_end = 720, 800
+# WFO LOT, ILX, and MKX
+x_start, x_end = 503, 532
+y_start, y_end = 739, 788
 
-#x_start, x_end = 490, 550
-#y_start, y_end = 730, 790
-
-# SOCAL
-#x_start, x_end = 325, 400
-#y_start, y_end = 790, 870
-
-# Weather Underground specs
+# Weather Underground specs. These are all public keys, so no need to hide them.
 API_KEY = 'e1f10a1e78da46f5b10a1e78da96f525'
 url_base = 'https://api.weather.com/v2/vector-api/products/614/features?'
 BASE_URL = f"{url_base}apiKey={API_KEY}"

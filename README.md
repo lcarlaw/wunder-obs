@@ -18,7 +18,7 @@ mkdir environments
 cd environments
 python -m virtualenv wunder
 .\wunder\Scripts\activate
-python.exe pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 This may take several minutes.
@@ -26,7 +26,7 @@ This may take several minutes.
 If you'd like to install dependencies by hand for additional user control, the required non-standard libraries are:
 
 ```
-pandas pyarrow requests dash schedule aiohttp dash-bootstrap-components
+pandas pyarrow requests dash schedule aiohttp async-timeout dash-bootstrap-components
 ```
 
 ### Required directories and configurations
@@ -43,17 +43,17 @@ All of the data acquisition and precipitation calculations scripts are located i
 ```
 
 #### Configuration file
-The only item you'll absolutely have to update within `configs.py` will be the path to the Python with the `wunder` environment installed. Additional tuneable parameters are included. Note for windows users: you may need to set `\\` in the filepath for your PYTHON executable. 
+The only item you'll absolutely have to update within `configs.py` will be the path to the Python executable with the `wunder` environment installed. This is used by the `run_realtime.py` script to launch download processes. Additional tuneable parameters are included. Note for windows users: you will need to set `\\` in the filepath for your PYTHON executable. 
 
 ## Realtime running and visualization
-With the `wunder-precip` environment activated, launch the `run_realtime.py` script. This will automatically perform data downloads and processing every 15 minutes. On the first iteration, in order to build up a database of recent observations, data for the last hour will also be requeste from WU. Data before this does not exist within the tile files. As a result, 60 and 180 minute accumulations will be blank until sufficient data is added to the local database. 
+With the `wunder-precip` environment activated, launch the `run_realtime.py` script. This will automatically perform data downloads and processing 8 times per hour. 
 
 Once data is available (within `processing/output`), you can launch `app.py` within the top-level directory to launch an interactive dashboard viewer. 
 
 More information on the individual procedures being called are below.
 
 ### Data downloading
-`download_async.py` handles all of the data acquisition from Weather Underground. WU stores realtime data within *tiles* which contain 15 minutes of data. It is significantly optimized to provide the fastest possible performance. Requesting and then saving 10,000 tiles worth of data took ~30 seconds in testing.  
+`download_async.py` handles all of the data acquisition from Weather Underground. WU stores realtime data within *tiles* which contain 15 minutes of data. It is optimized to provide fast performance. Most of the overhead comes from writing the main dataframe to disk, but this too is optimized through the use of pyarrow and parquet files.
 
 ### Accumulation intervals
 `driver.py` performs the calculation of precipitation accumulations into several bins (currently 15, 30, 60, and 180 minute windows). 
