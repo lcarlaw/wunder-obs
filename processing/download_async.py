@@ -178,8 +178,6 @@ async def download_data(dt, user_datetime=None):
                 f"{BASE_URL}&x={x}&y={y}&lod=12&tile-size=512&time={time_string}"
                 f"&time={time_string2}"
             )
-
-    print(urls[-1])
             
     # This is where the actual data acquisition from the WU API takes place.
     t1 = time.time()
