@@ -70,48 +70,49 @@ async def fetch_all(session, urls):
         try:
             async with async_timeout.timeout(20):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
-                for knt, item in enumerate(res):
-                    if type(item) == aiohttp.client_exceptions.ClientConnectorError:
-                        info_dict['retry'].append(knt)
-                    elif type(item) == aiohttp.client_exceptions.ClientResponseError:
-                        info_dict['bad'].append(knt)
-                        log.warning(f"[BAD URL]: {str(item.request_info.url)}")   
-                    else:
-                        info_dict['good'].append(knt)
-
-                indices_to_remove = info_dict['bad'] + info_dict['retry']
-                for element in sorted(indices_to_remove, reverse=True):
-                    del res[element]
-                    del xvals[element]
-                    del yvals[element]
                 
-                full_res.extend(res)
-
-                # 100% of tiles returned successfully. Exit the download loop.  
-                if len(info_dict['bad']) == 0 and len(info_dict['retry']) == 0:
-                    log.info(f"[SUCCESS] Good download status.")
-                    return_flag = True    
-
-                # Some bad data. Remove from the response and exit the download loop. 
-                elif len(info_dict['bad']) > 0 and len(info_dict['retry']) == 0:
-                    log.info(f"[SUCCESS] Good download status. Some bad URLs")
-                    return_flag = True  
-
-                # Need to retry a series of URLs. 
-                elif len(info_dict['retry']) > 0:
-                    urls = [urls[i] for i in info_dict['retry']]
-                    log.info(f"[RETRY] Retrying: {len(urls)} URLs")
-                    tasks, xvals, yvals = create_tasks(session, urls)
-                    return_flag = False
-                    time.sleep(2)
-                    continue
-
+            for knt, item in enumerate(res):
+                if type(item) == aiohttp.client_exceptions.ClientConnectorError:
+                    info_dict['retry'].append(knt)
+                elif type(item) == aiohttp.client_exceptions.ClientResponseError:
+                    info_dict['bad'].append(knt)
+                    log.warning(f"[BAD URL]: {str(item.request_info.url)}")   
                 else:
-                    log.warning(f"Some other error. Resetting and trying again.")
-                    full_res = []
-                    return_flag = False 
-                    time.sleep(2)
-                    continue
+                    info_dict['good'].append(knt)
+
+            indices_to_remove = info_dict['bad'] + info_dict['retry']
+            for element in sorted(indices_to_remove, reverse=True):
+                del res[element]
+                del xvals[element]
+                del yvals[element]
+            
+            full_res.extend(res)
+
+            # 100% of tiles returned successfully. Exit the download loop.  
+            if len(info_dict['bad']) == 0 and len(info_dict['retry']) == 0:
+                log.info(f"[SUCCESS] Good download status.")
+                return_flag = True    
+
+            # Some bad data. Remove from the response and exit the download loop. 
+            elif len(info_dict['bad']) > 0 and len(info_dict['retry']) == 0:
+                log.info(f"[SUCCESS] Good download status. Some bad URLs")
+                return_flag = True  
+
+            # Need to retry a series of URLs. 
+            elif len(info_dict['retry']) > 0:
+                urls = [urls[i] for i in info_dict['retry']]
+                log.info(f"[RETRY] Retrying: {len(urls)} URLs")
+                tasks, xvals, yvals = create_tasks(session, urls)
+                return_flag = False
+                time.sleep(2)
+                continue
+
+            else:
+                log.warning(f"Some other error. Resetting and trying again.")
+                full_res = []
+                return_flag = False 
+                time.sleep(2)
+                continue
 
             if return_flag: 
                 log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
