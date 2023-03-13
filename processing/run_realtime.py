@@ -22,7 +22,8 @@ def run():
     execute(arg)
 
     # For large domains, you'll see better performance by splitting into multiple 
-    # calls to download_async rather than doing everything all at once.
+    # calls to download_async rather than doing everything all at once. You can specify
+    # x and y tile values on the command line with the -x and -y flags. 
     #arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -x 500,549 -y 700,749"
     #execute(arg)
     #arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -x 550,599 -y 750,799"
@@ -39,8 +40,7 @@ def run_driver():
     arg = f"{PYTHON} {SCRIPT_PATH}/driver.py"
     p = execute(arg)
     if p.returncode != 0:
-        log.error("[ERROR] status excuting processing script.")
-
+        log.error("[ERROR] status excuting processing script.")   
     return p
 
 def initialize_data():

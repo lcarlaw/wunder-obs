@@ -1,5 +1,6 @@
 import os
 
+# Likely need \\ separators on Windows
 PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
 
 # You should be able to leave these alone. Alter if desired. 
@@ -10,7 +11,7 @@ ARCHIVE_DIR = f"{OUTPUT_DIR}/archive"
 LOG_DIR = f"{SCRIPT_PATH}/logs"             # Location of logfiles
 WUNDER_DIR = f"{DATA_DIR}/wunder_tiles"     # Weather Underground tiles
 
-PURGE_HOURS = 24                            # number of hours to store data locally
+PURGE_HOURS = 120                           # number of hours to store data locally
 MAX_DIFF_MINUTES = 5                        # max differential tolerance for ob age
 MAX_AGE_MINUTES = 30                        # older observations won't be displayed
 DELTA_TOLERANCE = 20                        # Max 5-min precip rate before flagging
