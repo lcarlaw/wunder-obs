@@ -16,36 +16,23 @@ from utils.cmd import execute
 SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"run-cron.log")
 
-def info(text):
-    return f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} {text}"
-
 def run():
-    msg = info("Running download script.")
     log.info(f"Running download script.")
-    print(msg)
     arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py"
     execute(arg)
 
     run_driver()
-    msg = info("Sleeping...")
-    print(msg)
 
 def run_driver():
     """
     Run the processing script to compute accumulation windows. 
     """
-    msg = info("Running processing script.")
     log.info(f"Running processing script.")
-    print(msg)
     arg = f"{PYTHON} {SCRIPT_PATH}/driver.py"
     p = execute(arg)
     if p.returncode != 0:
-        msg = info("[ERROR] status excuting processing script.")
-        log.error("-->driver.py failed")
-        print(msg)
-    else:
-        msg = info("[GOOD] status excuting processing script.")
-        print(msg)
+        log.error("[ERROR] status excuting processing script.")
+
     return p
 
 def initialize_data():
@@ -54,12 +41,10 @@ def initialize_data():
     """
     now = datetime.utcnow() 
     latest_quarter_hour = pd.to_datetime(now).floor('15T')
-    print(info("Initializing precipitation database."))
     for back_minutes in range(60, 0, -15):
         dt = latest_quarter_hour - timedelta(minutes=back_minutes)
         datestring = dt.strftime('%Y-%m-%d/%H%M')
 
-        print(info(f"Downloading data tiles for {dt}-{dt+timedelta(minutes=15)}"))
         arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -t {datestring}"
         execute(arg)
 
@@ -71,7 +56,7 @@ def run_crons():
     task.every().hour.at(":17").do(run)
     task.every().hour.at(":32").do(run)
     task.every().hour.at(":47").do(run)
-    print(info("Sleeping until crons begin..."))
+    log.info("Sleeping until crons begin...")
     while True:
         task.run_pending()
         time.sleep(1)
@@ -98,8 +83,7 @@ def check_if_dbinit_needed():
 
 if __name__ == '__main__':
     freeze_support()
-
-    init_db = check_if_dbinit_needed();
-    if init_db:
-        initialize_data()
+    #init_db = check_if_dbinit_needed();
+    #if init_db:
+    #    initialize_data()
     run_crons()

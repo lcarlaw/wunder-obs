@@ -18,6 +18,7 @@ import asyncio
 import async_timeout
 import aiohttp
 
+import re
 import argparse
 import json
 import pandas as pd
@@ -43,13 +44,20 @@ async def fetch(session, url):
    
 def create_tasks(session, urls):
     tasks = []
+    xvals = []
+    yvals = []
     for url in urls: 
+        # Grab the x- and y- tile locations
+        loc_str = re.findall('x=\d{0,4}&y=\d{0,4}', url)[0]
+        idx = loc_str.find('&')
+        xvals.append(int(loc_str[2:idx]))
+        yvals.append(int(loc_str[idx+3:]))
         task = asyncio.create_task(fetch(session, url))
         tasks.append(task)
-    return tasks
+    return tasks, xvals, yvals
 
 async def fetch_all(session, urls):
-    tasks = create_tasks(session, urls)
+    tasks, xvals, yvals = create_tasks(session, urls)
     delay = 3
     full_res = []
     return_flag = False
@@ -65,15 +73,20 @@ async def fetch_all(session, urls):
                 for knt, item in enumerate(res):
                     if type(item) == aiohttp.client_exceptions.ClientConnectorError:
                         info_dict['retry'].append(knt)
-                        res.remove(item)
                     elif type(item) == aiohttp.client_exceptions.ClientResponseError:
                         info_dict['bad'].append(knt)
                         log.warning(f"[BAD URL]: {str(item.request_info.url)}")   
-                        res.remove(item)
                     else:
                         info_dict['good'].append(knt)
-                full_res.extend(res)
+
+                indices_to_remove = info_dict['bad'] + info_dict['retry']
+                for element in sorted(indices_to_remove, reverse=True):
+                    del res[element]
+                    del xvals[element]
+                    del yvals[element]
                 
+                full_res.extend(res)
+
                 # 100% of tiles returned successfully. Exit the download loop.  
                 if len(info_dict['bad']) == 0 and len(info_dict['retry']) == 0:
                     log.info(f"[SUCCESS] Good download status.")
@@ -82,24 +95,27 @@ async def fetch_all(session, urls):
                 # Some bad data. Remove from the response and exit the download loop. 
                 elif len(info_dict['bad']) > 0 and len(info_dict['retry']) == 0:
                     log.info(f"[SUCCESS] Good download status. Some bad URLs")
-                    counter = 0
-                    for element in info_dict['bad']:
-                        res.pop(element-counter)
-                        counter += 1
                     return_flag = True  
 
                 # Need to retry a series of URLs. 
                 elif len(info_dict['retry']) > 0:
-                    retry_urls = [urls[i] for i in info_dict['retry']]
-                    log.info(f"[RETRY] Retrying: {len(retry_urls)} URLs")
-                    tasks = create_tasks(session, retry_urls)
+                    urls = [urls[i] for i in info_dict['retry']]
+                    log.info(f"[RETRY] Retrying: {len(urls)} URLs")
+                    tasks, xvals, yvals = create_tasks(session, urls)
                     return_flag = False
-                    time.sleep(1)
+                    time.sleep(2)
+                    continue
+
+                else:
+                    log.warning(f"Some other error. Resetting and trying again.")
+                    full_res = []
+                    return_flag = False 
+                    time.sleep(2)
                     continue
 
                 if return_flag: 
                     log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
-                    return full_res  
+                    return full_res, xvals, yvals
                     
         except TimeoutError:
             log.warning(f"Could not connect to WU. Sleeping {delay} seconds.")
@@ -114,7 +130,7 @@ async def fetch_all(session, urls):
         log.error(f"[FAILURE] Exceeded {MAX_RETRIES} retries. Exiting.")
         log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
 
-    return full_res 
+    return full_res, xvals, yvals
 
 async def download_data(dt, user_datetime=None):
     """
@@ -150,21 +166,17 @@ async def download_data(dt, user_datetime=None):
     time_string2 = f"{start-900000}-{start}"                # Previous 15-minute window
 
     urls = []
-    xvals = []
-    yvals = []
     for x in range(x_start, x_end+1):
         for y in range(y_start, y_end+1):
             urls.append(
                 f"{BASE_URL}&x={x}&y={y}&lod=12&tile-size=512&time={time_string}"
                 f"&time={time_string2}"
             )
-            xvals.append(x)
-            yvals.append(y)
             
     # This is where the actual data acquisition from the WU API takes place.
     t1 = time.time()
     async with aiohttp.ClientSession() as session:
-        htmls = await fetch_all(session, urls)
+        htmls, xvals, yvals = await fetch_all(session, urls)
     
     log.info(f"TIME TO COMPLETE DATA SCRAPING: {round(time.time()-t1, 2)} seconds")
 
