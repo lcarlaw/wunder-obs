@@ -30,9 +30,12 @@ SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download.log")
 
 async def fetch_all(session, urls):
+    """Asynchronous GET request functions"""
     total_urls = len(urls)
 
     async def fetch(session, url):
+        # see https://stackoverflow.com/questions/65983012/aiohttp-having-request-body-
+        # content-text-when-calling-raise-for-status
         async with session.get(url) as r:
             if r.status != 200:
                 r.raise_for_status()
