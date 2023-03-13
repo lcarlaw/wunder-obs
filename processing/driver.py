@@ -183,8 +183,6 @@ def process_data(now):
     # Drop rows in which data is NaN for all precip time periods.
     cols = output_df.columns[output_df.columns.str.contains('_min')]
     output_df.dropna(subset=cols, how='all', inplace=True)
- 
-    log.info(f"# of observations: {len(output_df)}")
     filename = f"{OUTPUT_DIR}/latest_obs.parquet"
     output_df.to_parquet(filename, engine='pyarrow', index=False)
 
@@ -214,6 +212,7 @@ def process_data(now):
     filename = f"{OUTPUT_DIR}/master_db.parquet"
     merged_df.to_parquet(filename, engine='pyarrow', index=False)
 
+    log.info(f"# of observations: {len(merged_df):_}")
     log.info(f"Total Time: {round(time.time()-t1, 2)} seconds")
 
 def main():

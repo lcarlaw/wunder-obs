@@ -61,9 +61,13 @@ def initialize_data():
 def run_crons():
     task = schedule.Scheduler()
     task.every().hour.at(":02").do(run)
+    task.every().hour.at(":10").do(run)
     task.every().hour.at(":17").do(run)
+    task.every().hour.at(":25").do(run)
     task.every().hour.at(":32").do(run)
+    task.every().hour.at(":40").do(run)
     task.every().hour.at(":47").do(run)
+    task.every().hour.at(":55").do(run)
     log.info("Sleeping until crons begin...")
     while True:
         task.run_pending()

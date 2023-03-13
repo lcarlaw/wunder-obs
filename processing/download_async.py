@@ -70,7 +70,7 @@ async def fetch_all(session, urls):
         try:
             async with async_timeout.timeout(20):
                 res = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
             for knt, item in enumerate(res):
                 if type(item) == aiohttp.client_exceptions.ClientConnectorError:
                     info_dict['retry'].append(knt)
@@ -158,13 +158,18 @@ async def download_data(dt, user_datetime=None):
         dt = user_datetime 
 
     start = pd.to_datetime(dt).floor('15T')
+    delta = int((dt - start).total_seconds()//60) + 1 
     purge_dt = dt - timedelta(hours=PURGE_HOURS)
     log.info(f"Start of 15-minute window: {start}")
 
     # Convert to epoch milliseconds
     start = int(start.timestamp()*1000)
-    time_string = f"{start}-{start+900000}"                 # Current 15-minute window
-    time_string2 = f"{start-900000}-{start}"                # Previous 15-minute window
+
+    # The :{delta} seems to tell the API how many minutes after the start of the initial
+    # reference period we're at now. Without this, repeated calls within a 15-minute 
+    # window do not result in additional/new data. 
+    time_string = f"{start}-{start+900000}:{delta}"             # current 15-min window      
+    time_string2 = f"{start-900000}-{start}:{int(delta+15)}"    # previous 15-min window           
 
     urls = []
     for x in range(x_start, x_end+1):
@@ -173,6 +178,8 @@ async def download_data(dt, user_datetime=None):
                 f"{BASE_URL}&x={x}&y={y}&lod=12&tile-size=512&time={time_string}"
                 f"&time={time_string2}"
             )
+
+    print(urls[-1])
             
     # This is where the actual data acquisition from the WU API takes place.
     t1 = time.time()
