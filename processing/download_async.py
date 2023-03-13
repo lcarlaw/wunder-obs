@@ -18,7 +18,6 @@ import argparse
 import json
 import pandas as pd
 from datetime import datetime, timedelta
-import requests
 import time
 from pathlib import Path
 from multiprocessing import Pool
@@ -49,12 +48,14 @@ async def fetch_all(session, urls):
             idx = loc_str.find('&')
             xvals.append(int(loc_str[2:idx]))
             yvals.append(int(loc_str[idx+3:]))
+
+            # Create async task group
             task = asyncio.create_task(fetch(session, url))
             tasks.append(task)
         return tasks, xvals, yvals
 
     tasks, xvals, yvals = create_tasks(session, urls)
-    delay = 3
+    delay_seconds = 3
     full_res = []
     return_flag = False
     for _ in range(MAX_RETRIES):
@@ -89,25 +90,25 @@ async def fetch_all(session, urls):
                 log.info(f"[SUCCESS] Good download status.")
                 return_flag = True    
 
-            # Some bad data. Remove from the response and exit the download loop. 
+            # Some bad data, but no other issues. Bad data previously pruned. Exit.
             elif len(info_dict['bad']) > 0 and len(info_dict['retry']) == 0:
                 log.info(f"[SUCCESS] Good download status. Some bad URLs")
                 return_flag = True  
 
-            # Need to retry a series of URLs. 
+            # Need to retry a series of URLs. Will head back through the for loop. 
             elif len(info_dict['retry']) > 0:
                 urls = [urls[i] for i in info_dict['retry']]
                 log.info(f"[RETRY] Retrying: {len(urls)} URLs")
                 tasks, xvals, yvals = create_tasks(session, urls)
                 return_flag = False
-                time.sleep(2)
+                time.sleep(delay_seconds)
                 continue
 
             else:
                 log.warning(f"Some other error. Resetting and trying again.")
                 full_res = []
                 return_flag = False 
-                time.sleep(2)
+                time.sleep(delay_seconds)
                 continue
 
             if return_flag: 
@@ -115,9 +116,9 @@ async def fetch_all(session, urls):
                 return full_res, xvals, yvals
                     
         except (TimeoutError, asyncio.TimeoutError):
-            log.warning(f"Could not connect to WU. Sleeping {delay} seconds.")
-            time.sleep(delay)
-            delay *= 2
+            log.warning(f"Could not connect to WU. Sleeping {delay_seconds} seconds.")
+            time.sleep(delay_seconds)
+            delay_seconds *= 2
             continue     
         else:
             log.error(f"[FAILURE] No data available to download. Exiting.")
@@ -131,22 +132,25 @@ async def fetch_all(session, urls):
 
 async def download_data(dt, user_datetime=None):
     """
-    Main function which oversees downloading of weather underground data files. 
+    Main function which oversees downloading of weather underground data tile files. 
 
-    Initial step is to produce a master list of url requests for every tile and
-    requested/latest 15-minute window. Weather Underground seems to store these in
-    quarter-hour chunks. Requests are then passed to asyncio helper functions.
+    Initial step is to produce a master list of url requests for every tile for the 
+    current and previous 15-minute rolling window. Weather Underground seems to store
+    these in quarter-hour chunks. Requests are then passed to asyncio helper functions.
+    Final step involves merging with previous data on disk, pruning old observations,
+    and writing the latest dataframe out as a compressed parquet file. Uses default 
+    "snappy" compression for better I/O speeds at the expense of larger file sizes. 
 
     Parameters:
     -----------
     dt: datetime.datetime 
-        The current execution time. Will be rounded to the closest quarter-hour. 
+        The current execution time. Will be rounded down to the closest quarter-hour. 
 
     Optional parameters:
     --------------------
     user_datetime: datetime.datetime 
-        A requested time in the past. This is used by run_realtime when initially 
-        populating the precipitation directory. 
+        A requested time in the past. Note that WU only seems to store about an hour's 
+        worth of data within the high-resolution tiles.
     """
 
     log.info("=================================================================")
@@ -154,7 +158,6 @@ async def download_data(dt, user_datetime=None):
         dt = user_datetime 
 
     start = pd.to_datetime(dt).floor('15T')
-    end = start + timedelta(minutes=15)
     delta = int((dt - start).total_seconds()//60) + 1 
     purge_dt = dt - timedelta(hours=PURGE_HOURS)
     log.info(f"Start of 15-minute window: {start}")
@@ -184,33 +187,33 @@ async def download_data(dt, user_datetime=None):
     log.info(f"TIME TO COMPLETE DATA SCRAPING: {round(time.time()-t1, 2)} seconds")
 
     """
-    I/O part of the download process, which is the most CPU-intensive. Pool is much 
-    faster than ThreadPool in this case as a result. Lingering improvements are likely
-    limited to dataframe I/O. 
+    I/O part of the download process, which is the most CPU-intensive. Pool is faster  
+    than ThreadPool in this case as a result. Lingering improvements are likely limited
+    to dataframe I/O. 
     """
     with Pool(4) as pool:
         ret = pool.starmap(parse_info_tiles, zip(htmls, xvals, yvals))
     
     final = pd.concat(ret)
     datafile = f"{WUNDER_DIR}/merged_tiles.parquet"
+
+    # Read current dataframe on disk, if it exists and merge.
     temp_df = pd.DataFrame(columns=final.columns)
     if Path(datafile).exists():
        temp_df = pd.read_parquet(datafile)
     final = pd.concat([final, temp_df])
+
+    # Prune entries older than PURGE_HOURS and write to disk.
     final = final.loc[final['dateutc'] >= purge_dt]
     final.to_parquet(datafile)
 
 def parse_info_tiles(html, xval, yval):
     """
-    Work through each tile file (now held within memory) and send to corresponding 
-    dataframes (or create them if they don't already exist). 
-
-    Data that is older than PURGE_HOURS is removed from the .json files after each 
-    iteration.
+    Parse the json data returned from each tile's GET request and return a python dict.
 
     Parameters:
     -----------
-    html: dict 
+    html: dict-string 
         Result of GET requests from WU API
     xval, yval: ints
         x and y values of this tile's data
@@ -235,22 +238,14 @@ def parse_info_tiles(html, xval, yval):
             data_dict['precip'].append(values['dailyrainin'])
             data_dict['localhour'].append(values['localhour'])
 
-    except json.decoder.JSONDecodeError:
+    except (json.decoder.JSONDecodeError, KeyError):
         log.warning(f"No JSON data available for tile {xval}_{yval}")
-
-    except KeyError:
-        log.warning(f"Key Errors for tile {xval}_{yval}")
-
-    except requests.exceptions.ConnectTimeout:
-        log.warning(f"Connection timed out for tile {xval}_{yval}")
-    
-    except requests.exceptions.ConnectionError:
-        log.warning(f"Max retries for tile {xval}_{yval}")
     
     df = pd.DataFrame.from_dict(data_dict)
     return df
 
 if __name__ == '__main__':
+    now = datetime.utcnow()
     ap = argparse.ArgumentParser()
     ap.add_argument('-t', '--time-str', dest='time_string', help='Time to attempt &    \
                     fetch past data tiles (these are only available for the last hour).\
@@ -260,7 +255,6 @@ if __name__ == '__main__':
     ap.add_argument('-y', '--y-range', dest='y_range', help='Starting and ending y-    \
                     values. Format is: y-start,y-end')
     args = ap.parse_args()
-    now = datetime.utcnow()
 
     # User specified tile values in the x-direction. Override configs.py specifications. 
     if args.x_range is not None:
