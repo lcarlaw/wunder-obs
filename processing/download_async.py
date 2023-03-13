@@ -36,27 +36,27 @@ import os
 SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download.log")
 
-async def fetch(session, url):
-    async with session.get(url) as r:
-        if r.status != 200:
-            r.raise_for_status()
-        return await r.text() 
-   
-def create_tasks(session, urls):
-    tasks = []
-    xvals = []
-    yvals = []
-    for url in urls: 
-        # Grab the x- and y- tile locations
-        loc_str = re.findall('x=\d{0,4}&y=\d{0,4}', url)[0]
-        idx = loc_str.find('&')
-        xvals.append(int(loc_str[2:idx]))
-        yvals.append(int(loc_str[idx+3:]))
-        task = asyncio.create_task(fetch(session, url))
-        tasks.append(task)
-    return tasks, xvals, yvals
-
 async def fetch_all(session, urls):
+    async def fetch(session, url):
+        async with session.get(url) as r:
+            if r.status != 200:
+                r.raise_for_status()
+            return await r.text() 
+    
+    def create_tasks(session, urls):
+        tasks = []
+        xvals = []
+        yvals = []
+        for url in urls: 
+            # Grab the x- and y- tile locations
+            loc_str = re.findall('x=\d{0,4}&y=\d{0,4}', url)[0]
+            idx = loc_str.find('&')
+            xvals.append(int(loc_str[2:idx]))
+            yvals.append(int(loc_str[idx+3:]))
+            task = asyncio.create_task(fetch(session, url))
+            tasks.append(task)
+        return tasks, xvals, yvals
+
     tasks, xvals, yvals = create_tasks(session, urls)
     delay = 3
     full_res = []
@@ -151,8 +151,8 @@ async def download_data(dt, user_datetime=None):
     user_datetime: datetime.datetime 
         A requested time in the past. This is used by run_realtime when initially 
         populating the precipitation directory. 
-
     """
+
     log.info("=================================================================")
     if user_datetime is not None:
         dt = user_datetime 
@@ -204,10 +204,10 @@ def parse_info_tiles(html, xval, yval, purge_dt):
 
     Parameters:
     -----------
-    query: dict 
-        Dictionary of querystrings being passed as a GET request
+    html: dict 
+        Result of GET requests from WU API
     xval, yval: ints
-        x and y values of this tile's data.
+        x and y values of this tile's data
     purge_dt: datetime.datetime
         Datetime before which older data will be purged
     """
@@ -256,7 +256,7 @@ def parse_info_tiles(html, xval, yval, purge_dt):
     df = df.loc[df['dateutc'] >= purge_dt]
 
     # Better to sort here after download, or within qc step each time?
-    df.to_parquet(datafile, engine='pyarrow', index=False)
+    df.to_parquet(datafile)
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()

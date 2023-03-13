@@ -184,11 +184,11 @@ def process_data(now):
     cols = output_df.columns[output_df.columns.str.contains('_min')]
     output_df.dropna(subset=cols, how='all', inplace=True)
     filename = f"{OUTPUT_DIR}/latest_obs.parquet"
-    output_df.to_parquet(filename, engine='pyarrow', index=False)
+    output_df.to_parquet(filename)
 
     #log.info("Saving copy of latest observations to archive folder")
     #shutil.copyfile(filename, 
-    #                f"{ARCHIVE_DIR}/{now.strftime('%Y%m%d_%H%M')}.parquet")
+    #                f"{ARCHIVE_DIR}/{now.strftime('%Y%m%d_%H%M')}.feather")
 
     """
     Maybe not great we have to do this again. 
@@ -210,7 +210,7 @@ def process_data(now):
     merged_df.sort_values(by=['siteid', 'dateutc'], inplace=True)
     merged_df.dropna(subset='precip', inplace=True)
     filename = f"{OUTPUT_DIR}/master_db.parquet"
-    merged_df.to_parquet(filename, engine='pyarrow', index=False)
+    merged_df.to_parquet(filename)
 
     log.info(f"# of observations: {len(merged_df):_}")
     log.info(f"Total Time: {round(time.time()-t1, 2)} seconds")
