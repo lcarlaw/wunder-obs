@@ -53,7 +53,7 @@ Once data is available (within `processing/output`), you can launch `app.py` wit
 More information on the individual procedures being called are below.
 
 ### Data downloading
-`download_async.py` handles all of the data acquisition from Weather Underground. WU stores realtime data within *tiles* which contain 15 minutes of data. It is significantly optimized to provide the fastest possible performance. The main overhead is the time it takes to write data to disk as compressed parquet files.
+`download_async.py` handles all of the data acquisition from Weather Underground. WU stores realtime data within *tiles* which contain 15 minutes of data. It is optimized to provide fast performance. Most of the overhead comes from writing the main dataframe to disk, but this too is optimized through the use of pyarrow and parquet files.
 
 ### Accumulation intervals
 `driver.py` performs the calculation of precipitation accumulations into several bins (currently 15, 30, 60, and 180 minute windows). 

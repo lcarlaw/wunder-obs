@@ -4,11 +4,11 @@ import os
 Path to Python exeuctable. Used by run_realtime.py
 Likely need \\ separators on Windows machines instead of /
 """
-#PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
-PYTHON = 'C:\\Users\\leecarlaw\\environments\\wunder\\Scripts\\python.exe'
+PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
+#PYTHON = 'C:\\Users\\leecarlaw\\environments\\wunder\\Scripts\\python.exe'
 
-#SCRIPT_PATH = os.path.dirname(__file__) or "."
-SCRIPT_PATH = 'Z:\\scripts\\wunder-precip\\processing'
+SCRIPT_PATH = os.path.dirname(__file__) or "."
+#SCRIPT_PATH = 'Z:\\scripts\\wunder-precip\\processing'
 
 # You should be able to leave these alone. Alter if desired. 
 DATA_DIR = f"{SCRIPT_PATH}/data"
@@ -17,11 +17,10 @@ ARCHIVE_DIR = f"{OUTPUT_DIR}/archive"
 LOG_DIR = f"{SCRIPT_PATH}/logs"             # Location of logfiles
 WUNDER_DIR = f"{DATA_DIR}/wunder_tiles"     # Weather Underground tiles
 
+MAX_RETRIES = 5                             # Max download retries after failure
 PURGE_HOURS = 120                           # number of hours to store data locally
 MAX_DIFF_MINUTES = 5                        # max differential tolerance for ob age
 MAX_AGE_MINUTES = 30                        # older observations won't be displayed
-DELTA_TOLERANCE = 20                        # Max 5-min precip rate before flagging
-MAX_RETRIES = 5                             # Max download retries after failure
 
 """
 Weather Underground API data stored in tiles. x-values increase west-to-east while y- 

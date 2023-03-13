@@ -1,14 +1,9 @@
 """
-Downloads realtime observations from Weather Underground in tiles.  
+Downloads realtime observations from Weather Underground tiles.  
 
 Code is optimized to handle many simultaneous web server requests and subsequent data 
 storage very quickly. The slowest part of this process is IO-related (i.e. reading of 
 stored data on disk & the subsequent re-writing to update with the latest observations). 
-
-In testing, acquiring data from 10_000 tile files and writing to disk took about 25-30 
-seconds. This takes many minutes to perform synchronously on a single thread and is 
-prohibitive for realtime purposes. There seem to be ~60_0000 tiles across the CONUS 
-(each tile is about 15 x 15 km).
 
 For large domains exceeding about 5,000 tiles, separate calls to download_async will 
 likely provide better performance than bundling everything into a single execution. 
@@ -27,7 +22,6 @@ import requests
 import time
 from pathlib import Path
 from multiprocessing import Pool
-from itertools import repeat
 
 from configs import (BASE_URL, PURGE_HOURS, x_start, x_end, y_start, y_end, WUNDER_DIR,
                      MAX_RETRIES)
@@ -37,6 +31,8 @@ SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_download.log")
 
 async def fetch_all(session, urls):
+    total_urls = len(urls)
+
     async def fetch(session, url):
         async with session.get(url) as r:
             if r.status != 200:
@@ -115,7 +111,7 @@ async def fetch_all(session, urls):
                 continue
 
             if return_flag: 
-                log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
+                log.info(f"Sending {len(full_res)} of {total_urls} tiles to parser.")
                 return full_res, xvals, yvals
                     
         except (TimeoutError, asyncio.TimeoutError):
@@ -158,6 +154,7 @@ async def download_data(dt, user_datetime=None):
         dt = user_datetime 
 
     start = pd.to_datetime(dt).floor('15T')
+    end = start + timedelta(minutes=15)
     delta = int((dt - start).total_seconds()//60) + 1 
     purge_dt = dt - timedelta(hours=PURGE_HOURS)
     log.info(f"Start of 15-minute window: {start}")
@@ -168,8 +165,8 @@ async def download_data(dt, user_datetime=None):
     # The :{delta} seems to tell the API how many minutes after the start of the initial
     # reference period we're at now. Without this, repeated calls within a 15-minute 
     # window do not result in additional/new data. 
-    time_string = f"{start}-{start+900000}:{delta}"             # current 15-min window      
-    time_string2 = f"{start-900000}-{start}:{int(delta+15)}"    # previous 15-min window           
+    time_string = f"{start}-{start+900000}:{delta}"              # current 15-min window      
+    time_string2 = f"{start-900000}-{start}:{int(delta+15)}"     # previous 15-min window           
 
     urls = []
     for x in range(x_start, x_end+1):
@@ -192,9 +189,18 @@ async def download_data(dt, user_datetime=None):
     limited to dataframe I/O. 
     """
     with Pool(4) as pool:
-        pool.starmap(parse_info_tiles, zip(htmls, xvals, yvals, repeat(purge_dt)))
+        ret = pool.starmap(parse_info_tiles, zip(htmls, xvals, yvals))
+    
+    final = pd.concat(ret)
+    datafile = f"{WUNDER_DIR}/merged_tiles.parquet"
+    temp_df = pd.DataFrame(columns=final.columns)
+    if Path(datafile).exists():
+       temp_df = pd.read_parquet(datafile)
+    final = pd.concat([final, temp_df])
+    final = final.loc[final['dateutc'] >= purge_dt]
+    final.to_parquet(datafile)
 
-def parse_info_tiles(html, xval, yval, purge_dt):
+def parse_info_tiles(html, xval, yval):
     """
     Work through each tile file (now held within memory) and send to corresponding 
     dataframes (or create them if they don't already exist). 
@@ -208,17 +214,7 @@ def parse_info_tiles(html, xval, yval, purge_dt):
         Result of GET requests from WU API
     xval, yval: ints
         x and y values of this tile's data
-    purge_dt: datetime.datetime
-        Datetime before which older data will be purged
     """
-    COLUMNS = ['siteid', 'lon', 'lat','dateutc', 'precip', 'localhour']
-    
-    # Set the output file. If it already exists, read in the data.
-    datafile = f"{WUNDER_DIR}/{xval}_{yval}.parquet"
-    df = pd.DataFrame(columns=COLUMNS)
-    if Path(datafile).exists():
-       df = pd.read_parquet(datafile)
-
     data_dict = {
         'siteid': [],
         'lon': [],
@@ -250,13 +246,9 @@ def parse_info_tiles(html, xval, yval, purge_dt):
     
     except requests.exceptions.ConnectionError:
         log.warning(f"Max retries for tile {xval}_{yval}")
-
-    # Merge the data and drop any entries older than purge_dt. Save to disk.
-    df = pd.concat([df, pd.DataFrame(data_dict)])
-    df = df.loc[df['dateutc'] >= purge_dt]
-
-    # Better to sort here after download, or within qc step each time?
-    df.to_parquet(datafile)
+    
+    df = pd.DataFrame.from_dict(data_dict)
+    return df
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -270,12 +262,12 @@ if __name__ == '__main__':
     args = ap.parse_args()
     now = datetime.utcnow()
 
-    # User has specified tile values in the x-direction. Override configs.py specifications. 
+    # User specified tile values in the x-direction. Override configs.py specifications. 
     if args.x_range is not None:
         x_split = args.x_range.split(',')
         x_start, x_end = int(x_split[0]), int(x_split[1])
 
-    # User has specified tile values in the y-direction. Override configs.py specifications. 
+    # User specified tile values in the y-direction. Override configs.py specifications. 
     if args.y_range is not None:
         y_split = args.y_range.split(',')
         y_start, y_end = int(y_split[0]), int(y_split[1])
