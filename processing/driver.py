@@ -165,7 +165,7 @@ def process_data(now):
             executor.shutdown(wait=True)
 
     def _execute_pool():
-        with Pool(8) as pool:
+        with Pool(4) as pool:
             result = pool.map(partial(create_tile_output, now=now), tilefiles)
         return result
 
@@ -186,9 +186,9 @@ def process_data(now):
     filename = f"{OUTPUT_DIR}/latest_obs.parquet"
     output_df.to_parquet(filename, engine='pyarrow', index=False)
 
-    log.info("Saving copy of latest observations to archive folder")
-    shutil.copyfile(filename, 
-                    f"{ARCHIVE_DIR}/{now.strftime('%Y%m%d_%H%M')}.parquet")
+    #log.info("Saving copy of latest observations to archive folder")
+    #shutil.copyfile(filename, 
+    #                f"{ARCHIVE_DIR}/{now.strftime('%Y%m%d_%H%M')}.parquet")
 
     """
     Maybe not great we have to do this again. 

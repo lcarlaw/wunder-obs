@@ -36,8 +36,12 @@ directly by using the -x and -y flags:
     python download_async.py -x 500,549 -y 700,745
 """
 # WFO LOT
-x_start, x_end = 514, 530
-y_start, y_end = 754, 773
+#x_start, x_end = 514, 532
+#y_start, y_end = 754, 773
+
+# WFO LOT, ILX, and MKX
+x_start, x_end = 503, 532
+y_start, y_end = 739, 788
 
 # Weather Underground specs. These are all public keys, so no need to hide them.
 API_KEY = 'e1f10a1e78da46f5b10a1e78da96f525'

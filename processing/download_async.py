@@ -118,7 +118,7 @@ async def fetch_all(session, urls):
                 log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
                 return full_res, xvals, yvals
                     
-        except TimeoutError:
+        except (TimeoutError, asyncio.TimeoutError):
             log.warning(f"Could not connect to WU. Sleeping {delay} seconds.")
             time.sleep(delay)
             delay *= 2
@@ -191,7 +191,7 @@ async def download_data(dt, user_datetime=None):
     faster than ThreadPool in this case as a result. Lingering improvements are likely
     limited to dataframe I/O. 
     """
-    with Pool(8) as pool:
+    with Pool(4) as pool:
         pool.starmap(parse_info_tiles, zip(htmls, xvals, yvals, repeat(purge_dt)))
 
 def parse_info_tiles(html, xval, yval, purge_dt):
