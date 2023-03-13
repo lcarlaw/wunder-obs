@@ -113,9 +113,9 @@ async def fetch_all(session, urls):
                     time.sleep(2)
                     continue
 
-                if return_flag: 
-                    log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
-                    return full_res, xvals, yvals
+            if return_flag: 
+                log.info(f"Sending {len(full_res)} of {len(urls)} tiles to parser.")
+                return full_res, xvals, yvals
                     
         except TimeoutError:
             log.warning(f"Could not connect to WU. Sleeping {delay} seconds.")

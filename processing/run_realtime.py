@@ -21,6 +21,14 @@ def run():
     arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py"
     execute(arg)
 
+    # For large domains, you'll see better performance by splitting into multiple 
+    # calls to download_async rather than doing everything all at once.
+    #arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -x 500,549 -y 700,749"
+    #execute(arg)
+    #arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -x 550,599 -y 750,799"
+    #execute(arg)
+
+    # Process the tile files: compute running totals and QC erroneous data.
     run_driver()
 
 def run_driver():
