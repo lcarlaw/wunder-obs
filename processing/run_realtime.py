@@ -37,7 +37,7 @@ def run_driver():
     Run the processing script to compute accumulation windows. 
     """
     log.info(f"Running processing script.")
-    arg = f"{PYTHON} {SCRIPT_PATH}/driver.py"
+    arg = f"{PYTHON} {SCRIPT_PATH}/process_data.py"
     p = execute(arg)
     if p.returncode != 0:
         log.error("[ERROR] status excuting processing script.")   
@@ -97,5 +97,5 @@ if __name__ == '__main__':
     freeze_support()
     #init_db = check_if_dbinit_needed();
     #if init_db:
-    #    initialize_data()
+    initialize_data()
     run_crons()

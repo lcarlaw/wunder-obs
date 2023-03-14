@@ -4,12 +4,13 @@ from dash import dcc
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
 import pandas as pd
+pd.options.mode.chained_assignment = None
 import numpy as np
 import json
 
 import plotly.express as px 
 from datetime import datetime
-from processing.configs import MAPBOX_ACCESS_TOKEN, infostrings, TOOLTIPS, OUTPUT_DIR
+from processing.configs import MAPBOX_ACCESS_TOKEN, infostrings, TOOLTIPS, WUNDER_DIR
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
@@ -83,7 +84,7 @@ app.layout = html.Div(
                         ),  
                                 
                         dcc.Slider(
-                            0.01, 0.25, 0.02, value=.05, id='display-threshold'
+                            0.0, 0.25, 0.02, value=.05, id='display-threshold'
                         ),
 
                         html.H2(
@@ -173,7 +174,7 @@ app.layout = html.Div(
     Input('map-graph', 'clickData'),
 )
 def generate_timeseries(clickData):
-    df = pd.read_parquet(f'{OUTPUT_DIR}/master_db.parquet')
+    df = pd.read_parquet(f'{WUNDER_DIR}/merged_tiles.parquet')
     #df.fillna(0, inplace=True)
     time_series_fig = px.line([], height=300)
     time_series_fig.update_layout(
@@ -194,6 +195,8 @@ def generate_timeseries(clickData):
         NUM_HOURS = 3
         siteid = clickData['points'][0]['customdata'][0]
         rows = df.loc[df.siteid==siteid]
+        rows.sort_values(by=['siteid', 'dateutc'], inplace=True)
+        rows.reset_index(inplace=True)
         end_dt = rows['dateutc'].iloc[-1]
         start_dt = end_dt - pd.to_timedelta(NUM_HOURS, unit='hours')
         deltas_start = (start_dt - rows.dateutc).abs()
@@ -236,7 +239,7 @@ def normalize_precip_values(df, maxval=2.):
     Input('cbar-max', 'value'),
 )
 def update_graph(dummy, accum_period, display_threshold, cbar_max):
-    df = pd.read_parquet(f'{OUTPUT_DIR}/latest_obs.parquet')
+    df = pd.read_parquet(f'{WUNDER_DIR}/latest_obs.parquet')
     df.fillna(0, inplace=True)
     data_time = df['latest_ob_time'].max()
 
@@ -260,12 +263,13 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max):
         age_minutes = int(delta.total_seconds() / 60.)
         data_age_alert = f"WARNING: Observations are {age_minutes} minutes old"
 
+    print(df)
     fig = px.scatter_mapbox(df, lat='lat', lon='lon', color=color_var, size='norm',
                             color_continuous_scale=px.colors.sequential.thermal,
                             size_max=10, hover_data=labels.keys(),
                             range_color=[0, cbar_max], height=1100,
                             center={'lat':41.8, 'lon':-88.5},
-                            labels=labels, opacity=0.6, zoom=7,
+                            labels=labels, opacity=0.7, zoom=7,
                             )
     fig.update_layout(
         margin=dict(l=0, r=0, t=0, b=0),

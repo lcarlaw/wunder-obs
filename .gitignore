@@ -7,5 +7,5 @@ processing/output/2023-02-22
 processing/tests
 processing/unused
 processing/output/*.parquet
-processing/speed_tests.ipynb
+processing/*.ipynb
 processing/.ipynb_checkpoints

@@ -75,7 +75,7 @@ async def fetch_all(session, urls):
             for element in sorted(indices_to_remove, reverse=True):
                 del res[element]
 
-            log.info(info_dict)
+            #log.info(info_dict)
             full_res.extend(res)
 
             # 100% of tiles returned successfully. Exit the download loop.  
@@ -202,7 +202,7 @@ async def download_data(dt, user_datetime=None):
     final = final.loc[final['dateutc'] >= purge_dt]
     final['siteid'] = final['siteid'].astype('category')
     final[['lon','lat','precip']] = final[['lon','lat','precip']].apply(pd.to_numeric, 
-                                                                      downcast='float')
+                                                                        downcast='float')
     final['localhour'] = pd.to_numeric(final['localhour'], downcast='unsigned')
     final.to_parquet(datafile)
 
