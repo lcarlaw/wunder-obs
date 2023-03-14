@@ -19,7 +19,9 @@ log = logfile(f"run-cron.log")
 def run():
     log.info(f"Running download script.")
     arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py"
-    execute(arg)
+    p = execute(arg)
+    if p.returncode != 0:
+        log.error("[ERROR] status excuting download script.")   
 
     # For large domains, you'll see better performance by splitting into multiple 
     # calls to download_async rather than doing everything all at once. You can specify

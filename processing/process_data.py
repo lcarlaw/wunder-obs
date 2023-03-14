@@ -1,15 +1,6 @@
 """
 This script controls the processing/data analysis to generate precipitation accumulation
-windows. Two dataframes are output: latest_obs and master_db. The former contains the 
-latest accumulations and is used by the dash-app to display values on the map, while 
-master_db contains all of the time series data 
-
-Currently the merged_df precip data will still be incorrect as precipitation resets
-at midnight or 1 am local since the raw tile files are being used to generate it. 
-Need to correct it. 
-
-This script probably could use the most work. Lots of repeated calculations and other 
-inefficiencies. 
+windows. 
 """
 
 import numpy as np
@@ -32,14 +23,18 @@ log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_process_data.log")
 
 # Needs to be largest --> smallest
 ACCUM_PERIODS = [180, 60, 30, 15]
-
 def data_qc(df):
+    """
+    Input df will be sorted, with older data first and newer data at the end. The first
+    index is at the start of this particular precip window, while the last index is the 
+    most recent observation. 
+    """
     precip_amount = np.nan
 
     # CASE 1: Filtered data is entirely monotonically increasing
     if df['precip'].is_monotonic_increasing:
         precip_amount = df['precip'].iloc[-1] - df['precip'].iloc[0]
-        precip_amount = float(round(precip_amount, 2))
+        precip_amount = round(precip_amount, 2)
     else:
         dx = np.diff(df['precip'])
         idx = np.where(dx < 0)
@@ -57,6 +52,7 @@ def data_qc(df):
                 temp = df['precip'][idx[0][0]+1:] + max_daily_val
                 df['precip'][idx[0][0]+1:] = temp 
                 precip_amount = df.iloc[-1]['precip'] - df.iloc[0]['precip']
+                precip_amount = round(precip_amount, 2)
 
             # This reset happened at another time. In this case, while the rest of
             # the data may be okay, for now, assume the data is bad at this time. 
@@ -105,6 +101,10 @@ def process(now):
     filtered.sort_values(by=['siteid', 'dateutc'], inplace=True)
     filtered.reset_index(inplace=True)
 
+    log.info(
+        f"Processing {len(filtered):_} observations from "
+        f"{len(filtered.siteid.unique()):_} sites.")
+
     # Initialize storage dictionary for data output
     output_dict = {
         'siteid': [],
@@ -137,10 +137,11 @@ def process(now):
     #    result = pool.starmap(calc_site_precip, zip(siteids, repeat(filtered)))
     
 def main():
+    log.info("=================================================================")
     t1 = time.time()
     now = datetime.utcnow()
     process(now)
-    log.info(f"Processing time: {round(time.time()-t1, 2)} seconds")
+    log.info(f"TOTAL time: {round(time.time()-t1, 2)} seconds")
 
 if __name__ == '__main__':
     main()

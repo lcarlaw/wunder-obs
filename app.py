@@ -84,7 +84,7 @@ app.layout = html.Div(
                         ),  
                                 
                         dcc.Slider(
-                            0.0, 0.25, 0.02, value=.05, id='display-threshold'
+                            0.01, 0.25, 0.02, value=.05, id='display-threshold'
                         ),
 
                         html.H2(
@@ -123,7 +123,9 @@ app.layout = html.Div(
                                         dcc.Link(
                                             id='clickable-link', 
                                             href='',
-                                            target='_blank'),
+                                            target='_blank',
+                                            style={'font-size': '13px'}
+                                            ),
                                         html.P(),
 
                                         html.H2('PRECIPITATION HISTOGRAM',
@@ -323,6 +325,6 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max):
     return fig, hist_1hour, timestring, data_age_alert, num_obs
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server()
 
 
