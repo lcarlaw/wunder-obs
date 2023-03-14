@@ -263,7 +263,6 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max):
         age_minutes = int(delta.total_seconds() / 60.)
         data_age_alert = f"WARNING: Observations are {age_minutes} minutes old"
 
-    print(df)
     fig = px.scatter_mapbox(df, lat='lat', lon='lon', color=color_var, size='norm',
                             color_continuous_scale=px.colors.sequential.thermal,
                             size_max=10, hover_data=labels.keys(),

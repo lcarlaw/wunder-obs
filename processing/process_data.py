@@ -28,72 +28,10 @@ from configs import (MAX_AGE_MINUTES, MAX_DIFF_MINUTES, WUNDER_DIR)
 from utils.log import logfile
 
 SCRIPT_PATH = os.path.dirname(__file__) or "."
-log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_driver.log")
+log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_process_data.log")
 
 # Needs to be largest --> smallest
 ACCUM_PERIODS = [180, 60, 30, 15]
-
-def data_calc_qc(end_dt, data, counts, window=180):
-    """
-    Optional parameters:
-    window: int - default = 180 minutes or 3 hours
-        Time window (minutes) over which to look at precip values.  
-    """
-    start_dt = end_dt - pd.to_timedelta(window, unit='minutes')
-    deltas_start = (start_dt - data.dateutc).abs()
-    deltas_end = (end_dt - data.dateutc).abs()
-
-    # Observations falling within the search window, padded by MAX_DIFF_MINUTES.
-    if deltas_start.loc[deltas_start.idxmin()] <= pd.to_timedelta(MAX_DIFF_MINUTES, 
-                                                                  unit='minutes'):
-        filtered_df = data.loc[deltas_start.idxmin():deltas_end.idxmin()]
-
-        # Check if filtered data is monotonically increasing
-        dx = np.diff(filtered_df['precip'])
-        idx = np.where(dx < 0)
-        num_backwards = len(idx[0])
-        precip_amount = filtered_df.iloc[-1]['precip'] - filtered_df.iloc[0]['precip']
-        precip_amount = round(precip_amount, 2)
-        
-        # To filter out the [None] entries. 
-        if np.isfinite(precip_amount):
-        
-            # CASE 1: Filtered data is entirely monotonically increasing
-            if num_backwards == 0:
-                counts['passed'] += 1
-                return precip_amount
-            
-            # CASE 2: A single precip decrease in this window.
-            elif num_backwards == 1:
-
-                # This reset happened either at midnight or 1 am local. There also seem
-                # to be sites that reset at other hours??
-                hours = filtered_df['localhour']
-                if (hours.iloc[idx[0][0]] == 23 and hours.iloc[idx[0][0]+1] == 0) or \
-                   (hours.iloc[idx[0][0]] == 0 and hours.iloc[idx[0][0]+1] == 1):
-                    
-                    max_daily_val = filtered_df['precip'].iloc[idx[0][0]]
-                    temp = filtered_df['precip'][idx[0][0]+1:] + max_daily_val
-                    filtered_df['precip'][idx[0][0]+1:] = temp 
-                    
-                    counts['passed'] += 1
-                    return filtered_df.iloc[-1]['precip'] - filtered_df.iloc[0]['precip']
-
-                # This reset happened at another time. In this case, while the rest of
-                # the data may be okay, for now, assume the data is bad at this time. 
-                counts['too_many_backwards'] += 1
-            
-            # CASE 3:
-            # We are probably neglecting some good data with sites that temporarily 
-            # report a negative dx, but then return to the baseline.
-            else:
-                counts['too_many_backwards'] += 1
-        
-        else:
-            counts['not_numeric'] += 1
-    else:
-        counts['too_old'] += 1
-    return np.nan 
 
 def data_qc(df):
     precip_amount = np.nan
@@ -108,8 +46,26 @@ def data_qc(df):
         num_backwards = len(idx[0])
         
         # CASE 2: A single precip decrease in this window.
-        #if num_backwards == 1:
-    
+        if num_backwards == 1:
+            # This reset happened either at midnight or 1 am local. There also seem
+            # to be sites that reset at other hours??
+            hours = df['localhour']
+            if (hours.iloc[idx[0][0]] == 23 and hours.iloc[idx[0][0]+1] == 0) or \
+               (hours.iloc[idx[0][0]] == 0 and hours.iloc[idx[0][0]+1] == 1):
+                
+                max_daily_val = df['precip'].iloc[idx[0][0]]
+                temp = df['precip'][idx[0][0]+1:] + max_daily_val
+                df['precip'][idx[0][0]+1:] = temp 
+                precip_amount = df.iloc[-1]['precip'] - df.iloc[0]['precip']
+
+            # This reset happened at another time. In this case, while the rest of
+            # the data may be okay, for now, assume the data is bad at this time. 
+            #else
+        
+        # CASE 3:
+        # We are probably neglecting some good data with sites that temporarily 
+        # report a negative dx, but then return to the baseline.
+
     return precip_amount
 
 def process(now): 
@@ -184,8 +140,7 @@ def main():
     t1 = time.time()
     now = datetime.utcnow()
     process(now)
-
-    print(time.time() - t1)
+    log.info(f"Processing time: {round(time.time()-t1, 2)} seconds")
 
 if __name__ == '__main__':
     main()

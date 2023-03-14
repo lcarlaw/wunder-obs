@@ -97,5 +97,5 @@ if __name__ == '__main__':
     freeze_support()
     #init_db = check_if_dbinit_needed();
     #if init_db:
-    initialize_data()
+    #    initialize_data()
     run_crons()

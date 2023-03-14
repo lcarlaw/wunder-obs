@@ -37,7 +37,6 @@ All of the data acquisition and precipitation calculations scripts are located i
 │   ├── data/
 │   │   ├── wunder_tiles/  
 │   ├── logs/
-│   ├── output/
 │   │   ├── archive/  
 │   │── utils/
 ```
