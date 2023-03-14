@@ -12,7 +12,7 @@ DATA_DIR = f"{SCRIPT_PATH}/data"
 OUTPUT_DIR = f"{SCRIPT_PATH}/output"
 ARCHIVE_DIR = f"{OUTPUT_DIR}/archive"
 LOG_DIR = f"{SCRIPT_PATH}/logs"             # Location of logfiles
-WUNDER_DIR = f"{DATA_DIR}/wunder_tiles"     # Weather Underground tiles
+WUNDER_DIR = f"{DATA_DIR}/wunder_data"      # Weather Underground data
 
 MAX_RETRIES = 5                             # Max download retries after failure
 PURGE_HOURS = 120                           # number of hours to store data locally
@@ -36,8 +36,8 @@ directly by using the -x and -y flags:
 #y_start, y_end = 754, 773
 
 # WFO LOT, ILX, and MKX
-x_start, x_end = 503, 532
-y_start, y_end = 739, 788
+x_start, x_end = 500, 540
+y_start, y_end = 744, 786
 
 # Weather Underground specs. These are all public keys, so no need to hide them.
 API_KEY = 'e1f10a1e78da46f5b10a1e78da96f525'

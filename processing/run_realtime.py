@@ -19,7 +19,9 @@ log = logfile(f"run-cron.log")
 def run():
     log.info(f"Running download script.")
     arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py"
-    execute(arg)
+    p = execute(arg)
+    if p.returncode != 0:
+        log.error("[ERROR] status excuting download script.")   
 
     # For large domains, you'll see better performance by splitting into multiple 
     # calls to download_async rather than doing everything all at once. You can specify
@@ -37,7 +39,7 @@ def run_driver():
     Run the processing script to compute accumulation windows. 
     """
     log.info(f"Running processing script.")
-    arg = f"{PYTHON} {SCRIPT_PATH}/driver.py"
+    arg = f"{PYTHON} {SCRIPT_PATH}/process_data.py"
     p = execute(arg)
     if p.returncode != 0:
         log.error("[ERROR] status excuting processing script.")   
