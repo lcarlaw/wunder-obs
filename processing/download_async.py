@@ -35,10 +35,15 @@ async def fetch_all(session, urls):
     async def fetch(session, url):
         # see https://stackoverflow.com/questions/65983012/aiohttp-having-request-body-
         # content-text-when-calling-raise-for-status
-        async with session.get(url) as r:
-            if r.status != 200:
-                r.raise_for_status()
-            return await r.text() 
+        try:
+            async with session.get(url) as r:
+                if r.status != 200:
+                    r.raise_for_status()
+                return await r.text() 
+        except RuntimeError:
+            # Should allow scripts to continue without breaking. Will result in 
+            # JSONDecodeError in function parse_info_tiles.
+            log.error("Function fetch encountered closed session")
     
     def create_tasks(session, urls):
         tasks = []
@@ -79,7 +84,7 @@ async def fetch_all(session, urls):
             full_res.extend(res)
 
             # 100% of tiles returned successfully. Exit the download loop.  
-            if len(info_dict['bad']) == 0 and len(info_dict['retry']) == 0:
+            if len(info_dict['bad']) == 0 and len(info_dict['retry']) < 10:
                 log.info(f"[SUCCESS] Good download status.")
                 return_flag = True    
 
@@ -89,13 +94,13 @@ async def fetch_all(session, urls):
                 return_flag = True  
 
             # Need to retry a series of URLs. Will head back through the for loop. 
-            elif len(info_dict['retry']) > 0:
-                urls = [urls[i] for i in info_dict['retry']]
-                log.info(f"[RETRY] Retrying: {len(urls)} URLs")
-                tasks = create_tasks(session, urls)
-                return_flag = False
-                time.sleep(delay_seconds)
-                continue
+            #elif len(info_dict['retry']) > 0:
+            #    urls = [urls[i] for i in info_dict['retry']]
+            #    log.info(f"[RETRY] Retrying: {len(urls)} URLs")
+            #    tasks = create_tasks(session, urls)
+            #    return_flag = False
+            #    time.sleep(delay_seconds)
+            #    continue
 
             else:
                 log.warning(f"Some other error. Resetting and trying again.")

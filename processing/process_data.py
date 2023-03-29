@@ -7,13 +7,10 @@ import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
 from datetime import datetime, timedelta
-#from concurrent.futures import ThreadPoolExecutor
-#from multiprocessing import Pool
-#from functools import partial
 import time
 import os
-#from glob import glob
-#from collections import defaultdict
+from pathlib import Path 
+from glob import glob
 
 from configs import (MAX_AGE_MINUTES, MAX_DIFF_MINUTES, WUNDER_DIR)
 from utils.log import logfile
@@ -133,6 +130,13 @@ def process(now):
     output_df.dropna(subset=cols, how='all', inplace=True)
     filename = f"{WUNDER_DIR}/latest_obs.parquet"
     output_df.to_parquet(filename)
+
+    # Gather the filesizes to keep track of storage on disk
+    file_list = glob(f"{WUNDER_DIR}/*")
+    filesize = 0.
+    for f in file_list:
+        filesize += Path(f).stat().st_size
+    log.info(f"{WUNDER_DIR} filesize: {round(filesize/1000000., 1)} MB")
 
     #with ThreadPoolExecutor(max_workers=50) as executor:
     #    executor.map(calc_site_precip, siteids)

@@ -1,5 +1,3 @@
-import os
-
 """
 Path to Python exeuctable and path to scripts. Used by run_realtime.py
 """
