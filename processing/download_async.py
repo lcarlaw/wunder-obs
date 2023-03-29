@@ -92,7 +92,7 @@ async def fetch_all(session, urls):
             elif len(info_dict['retry']) > 0:
                 urls = [urls[i] for i in info_dict['retry']]
                 log.info(f"[RETRY] Retrying: {len(urls)} URLs")
-                tasks, xvals, yvals = create_tasks(session, urls)
+                tasks = create_tasks(session, urls)
                 return_flag = False
                 time.sleep(delay_seconds)
                 continue

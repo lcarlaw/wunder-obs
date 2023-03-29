@@ -101,6 +101,11 @@ def process(now):
     filtered.sort_values(by=['siteid', 'dateutc'], inplace=True)
     filtered.reset_index(inplace=True)
 
+    # Trim the dataframe to encompass the longest accumulation period window, plus a 
+    # small buffer. Saves sending unused data to the QC functions. 
+    start_dt = now - timedelta(minutes=max(ACCUM_PERIODS) + 59)
+    filtered = filtered[filtered.dateutc.between(start_dt, now)]
+
     log.info(
         f"Processing {len(filtered):_} observations from "
         f"{len(filtered.siteid.unique()):_} sites.")
