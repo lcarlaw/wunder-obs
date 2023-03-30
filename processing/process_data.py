@@ -14,7 +14,7 @@ import multiprocessing as mp
 from multiprocessing import freeze_support
 
 SCRIPT_PATH = os.path.dirname(__file__) or "."
-log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_process_data_parallel.log")
+log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_process_data.log")
 
 def data_qc(df):
     """
@@ -59,8 +59,6 @@ def data_qc(df):
 
 def calc_site_precip(df):
     """
-    Defining this as an inner function to provide access to the main dataframe, 
-    without having to pass it back-and-forth across processes. 
     """
     output_dict = {
         'siteid': [],
@@ -96,7 +94,6 @@ def calc_site_precip(df):
 
 def chunk_dataframe(df, siteids, n_chunks):
     chunksize = len(siteids) // n_chunks
-
     for i in range(n_chunks):
         sites = siteids[0:chunksize]
         if i == n_chunks-1:

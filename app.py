@@ -10,7 +10,7 @@ import json
 
 import plotly.express as px 
 from datetime import datetime
-from processing.configs import MAPBOX_ACCESS_TOKEN, infostrings, TOOLTIPS, WUNDER_DIR
+from processing.configs import MAPBOX_ACCESS_TOKEN, TOOLTIPS, WUNDER_DIR
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
