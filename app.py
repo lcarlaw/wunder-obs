@@ -84,7 +84,7 @@ app.layout = html.Div(
                         ),  
                                 
                         dcc.Slider(
-                            0.01, 0.25, 0.02, value=.05, id='display-threshold'
+                            0.1, 1., 0.1, value=.1, id='display-threshold'
                         ),
 
                         html.H2(

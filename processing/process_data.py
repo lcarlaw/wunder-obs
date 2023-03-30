@@ -1,8 +1,3 @@
-"""
-This script controls the processing/data analysis to generate precipitation accumulation
-windows. 
-"""
-
 import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
@@ -12,14 +7,15 @@ import os
 from pathlib import Path 
 from glob import glob
 
-from configs import (MAX_AGE_MINUTES, MAX_DIFF_MINUTES, WUNDER_DIR)
+from configs import (MAX_AGE_MINUTES, MAX_DIFF_MINUTES, WUNDER_DIR, ACCUM_PERIODS)
 from utils.log import logfile
 
-SCRIPT_PATH = os.path.dirname(__file__) or "."
-log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_process_data.log")
+import multiprocessing as mp
+from multiprocessing import freeze_support
 
-# Needs to be largest --> smallest
-ACCUM_PERIODS = [180, 60, 30, 15]
+SCRIPT_PATH = os.path.dirname(__file__) or "."
+log = logfile(f"{datetime.utcnow().strftime('%Y%m%d')}_process_data_parallel.log")
+
 def data_qc(df):
     """
     Input df will be sorted, with older data first and newer data at the end. The first
@@ -61,13 +57,23 @@ def data_qc(df):
 
     return precip_amount
 
-def process(now): 
-    def calc_site_precip(site, output_dict):
-        """
-        Defining this as an inner function to provide access to the main dataframe, 
-        without having to pass it back-and-forth across processes. 
-        """
-        data = filtered.loc[filtered.siteid==site]
+def calc_site_precip(df):
+    """
+    Defining this as an inner function to provide access to the main dataframe, 
+    without having to pass it back-and-forth across processes. 
+    """
+    output_dict = {
+        'siteid': [],
+        'lon': [],
+        'lat': [],
+        'latest_ob_time': [],
+    }
+    for i in ACCUM_PERIODS: 
+        output_dict[f"{i}_min"] = []
+
+    sites = df.siteid.unique()
+    for site in sites:
+        data = df.loc[df.siteid==site]
         end_dt = data['dateutc'].iloc[-1]
 
         output_dict['siteid'].append(site)
@@ -75,7 +81,6 @@ def process(now):
         output_dict['lat'].append(data['lat'].iloc[-1])
         output_dict['latest_ob_time'].append(end_dt)
 
-        # Start with the longest window and work inwards
         for accum_pd in ACCUM_PERIODS:
             start_dt = end_dt-timedelta(minutes=accum_pd)
             deltas = (start_dt - data.dateutc).abs()
@@ -86,6 +91,25 @@ def process(now):
             else:
                 output_dict[f"{accum_pd}_min"].append(np.nan)
 
+    output_df = pd.DataFrame.from_dict(output_dict)
+    return output_df
+
+def chunk_dataframe(df, siteids, n_chunks):
+    chunksize = len(siteids) // n_chunks
+
+    for i in range(n_chunks):
+        sites = siteids[0:chunksize]
+        if i == n_chunks-1:
+            sites = siteids[0:]
+
+        out_df = df[df.siteid.isin(sites)]
+        yield out_df
+
+        # Remove what we've just chunked from the main dataframe
+        df = df[~df.siteid.isin(sites)]
+        siteids = list(set(siteids).difference(sites))
+
+def process(now):
     df = pd.read_parquet(f"{WUNDER_DIR}/merged_tiles.parquet")
     df.dropna(subset=['precip'], inplace=True)
 
@@ -107,24 +131,19 @@ def process(now):
         f"Processing {len(filtered):_} observations from "
         f"{len(filtered.siteid.unique()):_} sites.")
 
-    # Initialize storage dictionary for data output
-    output_dict = {
-        'siteid': [],
-        'lon': [],
-        'lat': [],
-        'latest_ob_time': [],
-    }
-    for i in ACCUM_PERIODS: 
-        output_dict[f"{i}_min"] = []
-
-    # Returns the most recent observation times for all sites in the filtered df
-    #most_recent_times = filtered.groupby('siteid')['dateutc'].max().dropna()
+    # Chunk the data based on siteid and send to worker processes
     siteids = filtered.siteid.unique()
-    for site in siteids:
-        calc_site_precip(site, output_dict)
-        
-    output_df = pd.DataFrame.from_dict(output_dict)
-    
+    n_jobs = 4
+    pool = mp.Pool(n_jobs)
+    result = pool.imap(calc_site_precip, chunk_dataframe(filtered, siteids, n_jobs))
+    pool.close()
+    pool.join()
+
+    merged = []
+    for chunk in result:
+        merged.append(chunk)
+    output_df = pd.concat(merged)
+
     # Drop rows in which data is NaN for all precip time periods.
     cols = output_df.columns[output_df.columns.str.contains('_min')]
     output_df.dropna(subset=cols, how='all', inplace=True)
@@ -138,13 +157,6 @@ def process(now):
         filesize += Path(f).stat().st_size
     log.info(f"{WUNDER_DIR} filesize: {round(filesize/1000000., 1)} MB")
 
-    #with ThreadPoolExecutor(max_workers=50) as executor:
-    #    executor.map(calc_site_precip, siteids)
-    #    executor.shutdown(wait=True)
-
-    #with Pool(16) as pool:
-    #    result = pool.starmap(calc_site_precip, zip(siteids, repeat(filtered)))
-    
 def main():
     log.info("=================================================================")
     t1 = time.time()
@@ -153,4 +165,5 @@ def main():
     log.info(f"TOTAL time: {round(time.time()-t1, 2)} seconds")
 
 if __name__ == '__main__':
+    freeze_support()
     main()

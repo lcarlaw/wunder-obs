@@ -14,7 +14,7 @@ ARCHIVE_DIR = f"{OUTPUT_DIR}/archive"
 LOG_DIR = f"{SCRIPT_PATH}/logs"             # Location of logfiles
 WUNDER_DIR = f"{DATA_DIR}/wunder_data"      # Weather Underground data
 
-CRON_RUN_MINUTES = 10                       # How often to run download/process scripts
+CRON_RUN_MINUTES = 5                        # How often to run download/process scripts
 MAX_RETRIES = 5                             # Max download retries after failure
 PURGE_HOURS = 120                           # number of hours to store data locally
 MAX_DIFF_MINUTES = 5                        # max differential tolerance for ob age
@@ -39,6 +39,12 @@ directly by using the -x and -y flags:
 # WFO LOT, ILX, and MKX
 x_start, x_end = 500, 540
 y_start, y_end = 744, 786
+
+x_start, x_end = 310, 360
+y_start, y_end = 750, 800
+
+# Accumulation periods (in minutes)
+ACCUM_PERIODS = [180, 60, 30, 15]
 
 # Weather Underground specs. These are all public keys, so no need to hide them.
 API_KEY = 'e1f10a1e78da46f5b10a1e78da96f525'
