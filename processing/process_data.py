@@ -1,3 +1,12 @@
+"""
+Script takes in raw/unprocessed data and computes realtime amounts based on windows 
+defined in the ACCUM_PERIODS list in the configs.py file. 
+
+The master dataframe is chunked and spread across (at this time) 4 processes to help 
+speed up computation times. Still need to investigate possible vector-based operations
+to speed this up even more. 
+"""
+
 import numpy as np
 import pandas as pd
 pd.options.mode.chained_assignment = None
@@ -26,7 +35,7 @@ def data_qc(df):
 
     # CASE 1: Filtered data is entirely monotonically increasing
     if df['precip'].is_monotonic_increasing:
-        precip_amount = df['precip'].iloc[-1] - df['precip'].iloc[0]
+        precip_amount = df['precip'].iat[-1] - df['precip'].iat[0]
         precip_amount = round(precip_amount, 2)
     else:
         dx = np.diff(df['precip'])
@@ -38,13 +47,13 @@ def data_qc(df):
             # This reset happened either at midnight or 1 am local. There also seem
             # to be sites that reset at other hours??
             hours = df['localhour']
-            if (hours.iloc[idx[0][0]] == 23 and hours.iloc[idx[0][0]+1] == 0) or \
-               (hours.iloc[idx[0][0]] == 0 and hours.iloc[idx[0][0]+1] == 1):
+            if (hours.iat[idx[0][0]] == 23 and hours.iat[idx[0][0]+1] == 0) or \
+               (hours.iat[idx[0][0]] == 0 and hours.iat[idx[0][0]+1] == 1):
                 
-                max_daily_val = df['precip'].iloc[idx[0][0]]
+                max_daily_val = df['precip'].iat[idx[0][0]]
                 temp = df['precip'][idx[0][0]+1:] + max_daily_val
                 df['precip'][idx[0][0]+1:] = temp 
-                precip_amount = df.iloc[-1]['precip'] - df.iloc[0]['precip']
+                precip_amount = df.iat[-1]['precip'] - df.iat[0]['precip']
                 precip_amount = round(precip_amount, 2)
 
             # This reset happened at another time. In this case, while the rest of
@@ -55,10 +64,16 @@ def data_qc(df):
         # We are probably neglecting some good data with sites that temporarily 
         # report a negative dx, but then return to the baseline.
 
+        # CASE 4: Multiple "resets" if crossing multiple days 
+        elif num_backwards > 1:
+            pass
+
     return precip_amount
 
 def calc_site_precip(df):
     """
+    Each process will proceed into this function to compute binned precipitation rates
+    on a subset of the main dataframe. 
     """
     output_dict = {
         'siteid': [],
@@ -72,11 +87,11 @@ def calc_site_precip(df):
     sites = df.siteid.unique()
     for site in sites:
         data = df.loc[df.siteid==site]
-        end_dt = data['dateutc'].iloc[-1]
+        end_dt = data['dateutc'].iat[-1]
 
         output_dict['siteid'].append(site)
-        output_dict['lon'].append(data['lon'].iloc[-1])
-        output_dict['lat'].append(data['lat'].iloc[-1])
+        output_dict['lon'].append(data['lon'].iat[-1])
+        output_dict['lat'].append(data['lat'].iat[-1])
         output_dict['latest_ob_time'].append(end_dt)
 
         for accum_pd in ACCUM_PERIODS:
@@ -121,15 +136,15 @@ def process(now):
 
     # Trim the dataframe to encompass the longest accumulation period window, plus a 
     # small buffer. Saves sending unused data to the QC functions. 
-    start_dt = now - timedelta(minutes=max(ACCUM_PERIODS) + 59)
+    start_dt = now - timedelta(minutes=max(ACCUM_PERIODS) + MAX_AGE_MINUTES)
     filtered = filtered[filtered.dateutc.between(start_dt, now)]
 
     log.info(
         f"Processing {len(filtered):_} observations from "
         f"{len(filtered.siteid.unique()):_} sites.")
-
+    
     # Chunk the data based on siteid and send to worker processes
-    siteids = filtered.siteid.unique()
+    siteids = list(filtered.siteid.unique())
     n_jobs = 4
     pool = mp.Pool(n_jobs)
     result = pool.imap(calc_site_precip, chunk_dataframe(filtered, siteids, n_jobs))

@@ -40,8 +40,8 @@ directly by using the -x and -y flags:
 x_start, x_end = 500, 540
 y_start, y_end = 744, 786
 
-x_start, x_end = 310, 360
-y_start, y_end = 750, 800
+x_start, x_end = 470, 520
+y_start, y_end = 780, 830
 
 # Accumulation periods (in minutes)
 ACCUM_PERIODS = [180, 60, 30, 15]
