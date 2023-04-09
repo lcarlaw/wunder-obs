@@ -2,10 +2,10 @@
 Path to Python exeuctable and path to scripts. Used by run_realtime.py
 """
 PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
-SCRIPT_PATH = '/Users/leecarlaw/scripts/wunder-precip/processing'
+SCRIPT_PATH = '/Users/leecarlaw/scripts/wunder-obs/processing'
 
 #PYTHON = r'\\lot-s-filesvr\met-apps\python-virtual-environments\wunder\Scripts\python.exe'
-#SCRIPT_PATH = r'\\lot-s-filesvr\met-apps\wunder-precip\processing'
+#SCRIPT_PATH = r'\\lot-s-filesvr\met-apps\wunder-obs\processing'
 
 # You should be able to leave these alone. Alter if desired. 
 DATA_DIR = f"{SCRIPT_PATH}/data"
@@ -14,7 +14,7 @@ ARCHIVE_DIR = f"{OUTPUT_DIR}/archive"
 LOG_DIR = f"{SCRIPT_PATH}/logs"             # Location of logfiles
 WUNDER_DIR = f"{DATA_DIR}/wunder_data"      # Weather Underground data
 
-CRON_RUN_MINUTES = 10                       # How often to run download/process scripts
+CRON_RUN_MINUTES = 5                        # How often to run download/process scripts
 MAX_RETRIES = 5                             # Max download retries after failure
 PURGE_HOURS = 120                           # number of hours to store data locally
 MAX_DIFF_MINUTES = 5                        # max differential tolerance for ob age

@@ -230,6 +230,7 @@ def parse_info_tiles(html):
         'lat': [],
         'dateutc': [],
         'precip': [],
+        'windgust': [],
         'localhour': []
     }
     try:
@@ -244,8 +245,9 @@ def parse_info_tiles(html):
             data_dict['lat'].append(lat)
             data_dict['dateutc'].append(pd.to_datetime(values['dateutc']))
             data_dict['precip'].append(values['dailyrainin'])
+            data_dict['windgust'].append(values['windgustmph'])
             data_dict['localhour'].append(values['localhour'])
-
+        
     except (json.decoder.JSONDecodeError, KeyError, TypeError):
         log.warning(f"Unable to parse tile")
     

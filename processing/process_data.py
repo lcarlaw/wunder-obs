@@ -73,7 +73,7 @@ def data_qc(df):
 def calc_site_precip(df):
     """
     Each process will proceed into this function to compute binned precipitation rates
-    on a subset of the main dataframe. 
+    and wind gusts on a subset of the main dataframe. 
     """
     output_dict = {
         'siteid': [],
@@ -82,7 +82,8 @@ def calc_site_precip(df):
         'latest_ob_time': [],
     }
     for i in ACCUM_PERIODS: 
-        output_dict[f"{i}_min"] = []
+        output_dict[f"precip_{i}_min"] = []
+        output_dict[f"peakgust_{i}_min"] = []
 
     sites = df.siteid.unique()
     for site in sites:
@@ -94,15 +95,18 @@ def calc_site_precip(df):
         output_dict['lat'].append(data['lat'].iat[-1])
         output_dict['latest_ob_time'].append(end_dt)
 
+        # Generate the precipitation rates and peak wind gusts
         for accum_pd in ACCUM_PERIODS:
             start_dt = end_dt-timedelta(minutes=accum_pd)
             deltas = (start_dt - data.dateutc).abs()
             if deltas.loc[deltas.idxmin()] <= timedelta(minutes=MAX_DIFF_MINUTES):
                 window_df = data.loc[deltas.idxmin():]
                 precip_amount = data_qc(window_df)
-                output_dict[f"{accum_pd}_min"].append(precip_amount)
+                output_dict[f"precip_{accum_pd}_min"].append(precip_amount)
+                output_dict[f"peakgust_{accum_pd}_min"].append(window_df['windgust'].max())
             else:
-                output_dict[f"{accum_pd}_min"].append(np.nan)
+                output_dict[f"precip_{accum_pd}_min"].append(np.nan)
+                output_dict[f"peakgust_{accum_pd}_min"].append(np.nan)
 
     output_df = pd.DataFrame.from_dict(output_dict)
     return output_df

@@ -30,9 +30,9 @@ def run():
     #execute(arg)
 
     # Process the tile files: compute running totals and QC erroneous data.
-    run_driver()
+    run_processing()
 
-def run_driver():
+def run_processing():
     """
     Run the processing script to compute accumulation windows. 
     """
@@ -58,7 +58,7 @@ def initialize_data():
         arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -t {datestring}"
         execute(arg)
 
-    run_driver()
+    run()
 
 def run_crons():
     task = schedule.Scheduler()
@@ -69,5 +69,5 @@ def run_crons():
         time.sleep(1)
 
 if __name__ == '__main__':
-    run()
+    initialize_data()
     run_crons()
