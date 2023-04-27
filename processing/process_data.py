@@ -53,8 +53,8 @@ def data_qc(df):
                 max_daily_val = df['precip'].iat[idx[0][0]]
                 temp = df['precip'][idx[0][0]+1:] + max_daily_val
                 df['precip'][idx[0][0]+1:] = temp 
-                precip_amount = df.iat[-1]['precip'] - df.iat[0]['precip']
-                precip_amount = round(precip_amount, 2)
+
+                precip_amount = df['precip'].iloc[-1] - df['precip'].iloc[0]
 
             # This reset happened at another time. In this case, while the rest of
             # the data may be okay, for now, assume the data is bad at this time. 
@@ -136,7 +136,7 @@ def process(now):
     valid_sites = temp.loc[temp > age_threshold].index
     filtered = df[df['siteid'].isin(valid_sites)]
     filtered.sort_values(by=['siteid', 'dateutc'], inplace=True)
-    filtered.reset_index(inplace=True)
+    filtered.reset_index(drop=True, inplace=True)
 
     # Trim the dataframe to encompass the longest accumulation period window, plus a 
     # small buffer. Saves sending unused data to the QC functions. 
