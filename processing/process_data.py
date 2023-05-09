@@ -35,7 +35,7 @@ def data_qc(df):
 
     # CASE 1: Filtered data is entirely monotonically increasing
     if df['precip'].is_monotonic_increasing:
-        precip_amount = df['precip'].iat[-1] - df['precip'].iat[0]
+        precip_amount = df['precip'].iloc[-1] - df['precip'].iloc[0]
         precip_amount = round(precip_amount, 2)
     else:
         dx = np.diff(df['precip'])
@@ -47,10 +47,10 @@ def data_qc(df):
             # This reset happened either at midnight or 1 am local. There also seem
             # to be sites that reset at other hours??
             hours = df['localhour']
-            if (hours.iat[idx[0][0]] == 23 and hours.iat[idx[0][0]+1] == 0) or \
-               (hours.iat[idx[0][0]] == 0 and hours.iat[idx[0][0]+1] == 1):
+            if (hours.iloc[idx[0][0]] == 23 and hours.iloc[idx[0][0]+1] == 0) or \
+               (hours.iloc[idx[0][0]] == 0 and hours.iloc[idx[0][0]+1] == 1):
                 
-                max_daily_val = df['precip'].iat[idx[0][0]]
+                max_daily_val = df['precip'].iloc[idx[0][0]]
                 temp = df['precip'][idx[0][0]+1:] + max_daily_val
                 df['precip'][idx[0][0]+1:] = temp 
 
@@ -88,11 +88,11 @@ def calc_site_precip(df):
     sites = df.siteid.unique()
     for site in sites:
         data = df.loc[df.siteid==site]
-        end_dt = data['dateutc'].iat[-1]
+        end_dt = data['dateutc'].iloc[-1]
 
         output_dict['siteid'].append(site)
-        output_dict['lon'].append(data['lon'].iat[-1])
-        output_dict['lat'].append(data['lat'].iat[-1])
+        output_dict['lon'].append(data['lon'].iloc[-1])
+        output_dict['lat'].append(data['lat'].iloc[-1])
         output_dict['latest_ob_time'].append(end_dt)
 
         # Generate the precipitation rates and peak wind gusts
