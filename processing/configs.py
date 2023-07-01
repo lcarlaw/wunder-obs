@@ -19,6 +19,7 @@ MAX_RETRIES = 5                             # Max download retries after failure
 PURGE_HOURS = 120                           # number of hours to store data locally
 MAX_DIFF_MINUTES = 5                        # max differential tolerance for ob age
 MAX_AGE_MINUTES = 30                        # older observations won't be displayed
+MAX_DIRECTORY_SIZE = 50                     # Max size (MB) for dirs before quitting
 
 """
 Weather Underground API data stored in tiles. x-values increase west-to-east while y- 

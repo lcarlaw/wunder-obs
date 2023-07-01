@@ -13,3 +13,4 @@ processing/.ipynb_checkpoints
 gusts.py
 update_siteid_file.py
 *.parquet
+colormap_specs.txt

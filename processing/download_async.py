@@ -255,6 +255,7 @@ def parse_info_tiles(html):
     return df
 
 if __name__ == '__main__':
+    # Example specifying tiles via command-line: download_async.py -x 500,549 -y 700,749
     now = datetime.utcnow()
     ap = argparse.ArgumentParser()
     ap.add_argument('-t', '--time-str', dest='time_string', help='Time to attempt &    \

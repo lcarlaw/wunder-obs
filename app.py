@@ -110,7 +110,7 @@ app.layout = html.Div(
                         ),
                         dcc.Slider(
                             min=0.5,
-                            max=6.,
+                            max=8.,
                             step=0.5,
                             value=.5, 
                             id='cbar-max'
@@ -272,10 +272,10 @@ def update_configs(weather_element):
     thresh_step = 0.1 
     thresh_val = 0.1
 
-    cbar_min_val = 0.5
-    cbar_max_val = 6 
-    cbar_step = 0.5
-    cbar_val = 0.5
+    cbar_min_val = 3
+    cbar_max_val = 15 
+    cbar_step = 1
+    cbar_val = 7
     if weather_element == 'Wind Gusts':
         thresh_min_val = 10
         thresh_max_val = 120 
