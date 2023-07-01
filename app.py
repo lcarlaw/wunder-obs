@@ -272,10 +272,10 @@ def update_configs(weather_element):
     thresh_step = 0.1 
     thresh_val = 0.1
 
-    cbar_min_val = 3
-    cbar_max_val = 15 
+    cbar_min_val = 1
+    cbar_max_val = 10
     cbar_step = 1
-    cbar_val = 7
+    cbar_val = 3
     if weather_element == 'Wind Gusts':
         thresh_min_val = 10
         thresh_max_val = 120 
@@ -391,6 +391,6 @@ def update_graph(dummy, accum_period, display_threshold, cbar_max, weather_eleme
     return fig, timestring, data_age_alert, num_obs
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
 
 
