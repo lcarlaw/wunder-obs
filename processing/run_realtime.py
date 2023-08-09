@@ -3,36 +3,50 @@ run.py controls the realtime execution of the main download and processing scrip
 """
 
 import os
+import sys 
 import schedule
 import time
 import pandas as pd
+from pathlib import Path 
+from glob import glob
 from datetime import datetime, timedelta
 
-from configs import PYTHON, CRON_RUN_MINUTES
+from configs import PYTHON, CRON_RUN_MINUTES, WUNDER_DIR, LOG_DIR, MAX_DIRECTORY_SIZE
 from utils.log import logfile
 from utils.cmd import execute
 SCRIPT_PATH = os.path.dirname(__file__) or "."
 log = logfile(f"run-cron.log")
 
+def get_directory_sizes():
+    """
+    Keep track of filesizes. Sources both the logfile and data directories. If these 
+    balloon above MAX_DIRECTORY_SIZE (in MB), kill the download script process.
+    """
+    file_list = glob(f"{WUNDER_DIR}/*")
+    file_list.extend(glob(f"{LOG_DIR}/*"))
+    directory_size = 0.
+    for f in file_list:
+        directory_size += Path(f).stat().st_size
+
+    directory_size = directory_size/1000000.
+    if directory_size > MAX_DIRECTORY_SIZE:
+        log.error(f"Data and logfile directories exceeded {MAX_DIRECTORY_SIZE} MB. Exiting.")
+        print(f"Data and logfile directories exceeded {MAX_DIRECTORY_SIZE} MB. Exiting.")
+        sys.exit()
+
 def run():
+    get_directory_sizes()
+
     log.info(f"Running download script.")
     arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py"
     p = execute(arg)
     if p.returncode != 0:
         log.error("[ERROR] status excuting download script.")   
 
-    # For large domains, you'll see better performance by splitting into multiple 
-    # calls to download_async rather than doing everything all at once. You can specify
-    # x and y tile values on the command line with the -x and -y flags. 
-    #arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -x 500,549 -y 700,749"
-    #execute(arg)
-    #arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -x 550,599 -y 750,799"
-    #execute(arg)
-
     # Process the tile files: compute running totals and QC erroneous data.
-    run_driver()
+    run_processing()
 
-def run_driver():
+def run_processing():
     """
     Run the processing script to compute accumulation windows. 
     """
@@ -58,7 +72,7 @@ def initialize_data():
         arg = f"{PYTHON} {SCRIPT_PATH}/download_async.py -t {datestring}"
         execute(arg)
 
-    run_driver()
+    run()
 
 def run_crons():
     task = schedule.Scheduler()
@@ -69,5 +83,5 @@ def run_crons():
         time.sleep(1)
 
 if __name__ == '__main__':
-    run()
+    initialize_data()
     run_crons()

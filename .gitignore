@@ -9,3 +9,8 @@ processing/unused
 processing/output/*.parquet
 processing/*.ipynb
 processing/.ipynb_checkpoints
+*.csv
+gusts.py
+update_siteid_file.py
+*.parquet
+colormap_specs.txt
