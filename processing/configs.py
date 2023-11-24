@@ -4,9 +4,6 @@ Path to Python exeuctable and path to scripts. Used by run_realtime.py
 PYTHON = '/Users/leecarlaw/anaconda3/envs/wunder/bin/python'
 SCRIPT_PATH = '/Users/leecarlaw/scripts/wunder-obs/processing'
 
-#PYTHON = r'\\lot-s-filesvr\met-apps\python-virtual-environments\wunder\Scripts\python.exe'
-#SCRIPT_PATH = r'\\lot-s-filesvr\met-apps\wunder-obs\processing'
-
 # You should be able to leave these alone. Alter if desired. 
 DATA_DIR = f"{SCRIPT_PATH}/data"
 OUTPUT_DIR = f"{SCRIPT_PATH}/output"
@@ -40,6 +37,10 @@ directly by using the -x and -y flags:
 # WFO LOT, ILX, and MKX
 x_start, x_end = 500, 540
 y_start, y_end = 744, 786
+
+# US (not recommended, included for tile reference numbers)
+#x_start, x_end = 310, 630
+#y_start, y_end = 705, 880
 
 # Accumulation periods (in minutes)
 ACCUM_PERIODS = [180, 60, 30, 15]
