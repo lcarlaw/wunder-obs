@@ -1,6 +1,11 @@
 # wunder-precip
 Scripts within this repository will download precipitation data from Weather Underground, partition it into accumulation windows, and save to disk. A dash application provides an interactive user interface to interrogate the data. 
 
+![](https://raw.githubusercontent.com/lcarlaw/wunder-obs/main/images/wunder-precip-image.png)
+<p align="center">
+  <em>Example of the Weather Underground interactive viewer.</em>
+</p>
+
 ## Setup instructions
 Installation has been tested using Anaconda. It may (should?) work with pip and virtualenv on Windows machines. 
 

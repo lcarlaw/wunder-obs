@@ -6,6 +6,7 @@ processing/data/2023-02-22
 processing/output/2023-02-22
 processing/tests
 processing/unused
+processing/post_process
 processing/output/*.parquet
 processing/*.ipynb
 processing/.ipynb_checkpoints
